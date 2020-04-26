@@ -161,7 +161,7 @@ typedef struct {
 
 #endif
 
-
+//TIGER switch_stun_ stun¥¶¿Ì
 /*!
   \brief Writes random characters into a buffer
   \param buf the buffer

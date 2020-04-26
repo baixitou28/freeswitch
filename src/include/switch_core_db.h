@@ -84,7 +84,7 @@ typedef void (*switch_core_db_destructor_type_t) (void *);
  * database connection remains open.
  */
 SWITCH_DECLARE(int) switch_core_db_close(switch_core_db_t *db);
-
+//TIGER switch_core_db_  ¿çÆ½Ì¨º¯Êý
 /**
  * Open the database file "filename".  The "filename" is UTF-8
  * encoded.  A switch_core_db_t* handle is returned in *Db, even

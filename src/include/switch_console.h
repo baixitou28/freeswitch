@@ -76,7 +76,7 @@ SWITCH_DECLARE_NONSTD(switch_status_t) switch_console_stream_write(switch_stream
 
 SWITCH_DECLARE(switch_status_t) switch_stream_write_file_contents(switch_stream_handle_t *stream, const char *path);
 
-
+//TIGER switch_console_ º¯Êý¶¨Òå
 SWITCH_DECLARE(switch_status_t) switch_console_init(switch_memory_pool_t *pool);
 SWITCH_DECLARE(switch_status_t) switch_console_shutdown(void);
 SWITCH_DECLARE(switch_status_t) switch_console_add_complete_func(const char *name, switch_console_complete_callback_t cb);

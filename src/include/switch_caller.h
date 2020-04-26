@@ -160,7 +160,7 @@ struct switch_caller_extension {
 	struct switch_caller_profile *children;
 	struct switch_caller_extension *next;
 };
-
+//TIGER switch_caller_  ¿çÆ½Ì¨º¯Êý
 /*!
   \brief Create a new extension with desired parameters
   \param session session associated with the extension (bound by scope)

@@ -390,17 +390,17 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 
 	for(;;) {
 		switch_mutex_lock(member->audio_out_mutex);
-		rlen = (uint32_t) switch_buffer_read(member->mux_buffer, data_buf, data_buf_len);
+		rlen = (uint32_t) switch_buffer_read(member->mux_buffer, data_buf, data_buf_len);//读数据
 		switch_mutex_unlock(member->audio_out_mutex);
 
-		if (rlen > 0) {
+		if (rlen > 0) {//如果用户禁止发言或者静止麦克风，如何处理？能读到数据吗？
 			len = (switch_size_t) rlen / sizeof(int16_t)/ conference->channels;
-			switch_core_file_write(&member->rec->fh, data_buf, &len);
+			switch_core_file_write(&member->rec->fh, data_buf, &len);//写数据，这里是写混合的数据，还是单个的数据
 		} else {
-			break;
+			break;//从member里的mux_buffer 始终应该读出数据来，否则就退出
 		}
 	}
-
+	//开始退出录制
 	switch_safe_free(data_buf);
 	switch_core_timer_destroy(&timer);
 	conference_member_del(conference, member);

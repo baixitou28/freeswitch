@@ -39,7 +39,7 @@ typedef struct curl_slist switch_curl_slist_t;
 typedef int switch_CURLINFO;
 typedef int switch_CURLcode;
 typedef int switch_CURLoption;
-
+//TIGER switch_curl_  ¿çÆ½Ì¨º¯Êý
 SWITCH_DECLARE(switch_CURL *) switch_curl_easy_init(void);
 SWITCH_DECLARE(switch_CURLcode) switch_curl_easy_perform(switch_CURL *handle);
 SWITCH_DECLARE(switch_CURLcode) switch_curl_easy_getinfo(switch_CURL *curl, switch_CURLINFO info, ... );

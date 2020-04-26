@@ -7406,7 +7406,7 @@ SWITCH_STANDARD_API(json_function)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-SWITCH_MODULE_LOAD_FUNCTION(mod_commands_load)
+SWITCH_MODULE_LOAD_FUNCTION(mod_commands_load)//TIGER 命令加载
 {
 	switch_api_interface_t *commands_api_interface;
 	switch_json_api_interface_t *json_api_interface;
@@ -7425,7 +7425,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_commands_load)
 		SWITCH_ADD_API(commands_api_interface, "bg_system", "Execute a system command in the background", bg_system_function, SYSTEM_SYNTAX);
 		SWITCH_ADD_API(commands_api_interface, "system", "Execute a system command", system_function, SYSTEM_SYNTAX);
 	}
-
+//加载命令tiger
 	SWITCH_ADD_API(commands_api_interface, "acl", "Compare an ip to an acl list", acl_function, "<ip> <list_name>");
 	SWITCH_ADD_API(commands_api_interface, "alias", "Alias", alias_function, ALIAS_SYNTAX);	SWITCH_ADD_API(commands_api_interface, "coalesce", "Return first nonempty parameter", coalesce_function, COALESCE_SYNTAX);
 	SWITCH_ADD_API(commands_api_interface, "banner", "Return the system banner", banner_function, "");
@@ -7579,7 +7579,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_commands_load)
 	SWITCH_ADD_JSON_API(json_api_interface, "channelData", "JSON channel data application", json_channel_data_function, "");
 
 
-
+//作用?
 	switch_console_set_complete("add alias add");
 	switch_console_set_complete("add alias stickyadd");
 	switch_console_set_complete("add alias del");

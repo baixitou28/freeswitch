@@ -289,7 +289,7 @@ static void switch_event_deliver_thread_pool(switch_event_t **event)
 	switch_thread_pool_launch_thread(&td);
 
 }
-
+//TIGER EVENT
 static void *SWITCH_THREAD_FUNC switch_event_dispatch_thread(switch_thread_t *thread, void *obj)
 {
 	switch_queue_t *queue = (switch_queue_t *) obj;
@@ -321,7 +321,7 @@ static void *SWITCH_THREAD_FUNC switch_event_dispatch_thread(switch_thread_t *th
 		if (!SYSTEM_RUNNING) {
 			break;
 		}
-
+//TIGER EVENT
 		if (switch_queue_pop(queue, &pop) != SWITCH_STATUS_SUCCESS) {
 			continue;
 		}
@@ -632,7 +632,7 @@ static void check_dispatch(void)
 }
 
 
-
+//TIGER EVENT  分发
 SWITCH_DECLARE(void) switch_event_launch_dispatch_threads(uint32_t max)
 {
 	switch_threadattr_t *thd_attr;
@@ -660,6 +660,7 @@ SWITCH_DECLARE(void) switch_event_launch_dispatch_threads(uint32_t max)
 		switch_threadattr_create(&thd_attr, pool);
 		switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);
 		switch_threadattr_priority_set(thd_attr, SWITCH_PRI_REALTIME);
+		//分发
 		switch_thread_create(&EVENT_DISPATCH_QUEUE_THREADS[index], thd_attr, switch_event_dispatch_thread, EVENT_DISPATCH_QUEUE, pool);
 		while(--sanity && !EVENT_DISPATCH_QUEUE_RUNNING[index]) switch_yield(10000);
 
@@ -673,7 +674,7 @@ SWITCH_DECLARE(void) switch_event_launch_dispatch_threads(uint32_t max)
 
 	SOFT_MAX_DISPATCH = index;
 }
-
+//TIGER EVENT 初始化
 SWITCH_DECLARE(switch_status_t) switch_event_init(switch_memory_pool_t *pool)
 {
 

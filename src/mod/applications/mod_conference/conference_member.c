@@ -121,7 +121,7 @@ void conference_member_bind_controls(conference_member_t *member, const char *co
 	if (params) switch_event_destroy(&params);
 
 }
-
+//tiger 打印conference状态
 void conference_member_update_status_field(conference_member_t *member)
 {
 	char *str, *vstr = "", display[128] = "", *json_display = NULL;
@@ -225,11 +225,11 @@ void conference_member_update_status_field(conference_member_t *member)
 	} else {
 		member->status_field->valuestring = strdup(display);
 	}
-
+	//队列
 	switch_live_array_add(member->conference->la, switch_core_session_get_uuid(member->session), -1, &member->json, SWITCH_FALSE);
 	switch_live_array_unlock(member->conference->la);
 }
-
+//事件
 switch_status_t conference_member_add_event_data(conference_member_t *member, switch_event_t *event)
 {
 	switch_status_t status = SWITCH_STATUS_SUCCESS;
@@ -348,7 +348,7 @@ uint32_t conference_member_stop_file(conference_member_t *member, file_stop_t st
 }
 
 
-
+//根据成员id，得到用户地址
 /* traverse the conference member list for the specified member id and return it's pointer */
 conference_member_t *conference_member_get(conference_obj_t *conference, uint32_t id)
 {
@@ -439,7 +439,7 @@ conference_member_t *conference_member_get_by_var(conference_obj_t *conference, 
 	return member;
 }
 
-
+//按角色查找用户
 /* traverse the conference member list for the specified member with role  and return it's pointer */
 conference_member_t *conference_member_get_by_role(conference_obj_t *conference, const char *role_id)
 {
@@ -483,7 +483,7 @@ conference_member_t *conference_member_get_by_role(conference_obj_t *conference,
 
 	return member;
 }
-
+//
 void conference_member_check_channels(switch_frame_t *frame, conference_member_t *member, switch_bool_t in)
 {
 	if (member->conference->channels != member->read_impl.number_of_channels || conference_utils_member_test_flag(member, MFLAG_POSITIONAL)) {
@@ -686,8 +686,9 @@ switch_status_t conference_member_del_relationship(conference_member_t *member, 
 	return status;
 }
 
-
-
+//freeswitch@sanhui> conference -172.16.1.130  list
+//92;sofia/internal/1019@60.191.98.35;6eea2ed2-747c-11ea-84c4-6d8070b9fbe8;1019;1019;hear|speak|floor|vid-floor;0;0;100
+//TIGER 会议 加入成员
 /* Gain exclusive access and add the member to the list */
 switch_status_t conference_member_add(conference_obj_t *conference, conference_member_t *member)
 {
@@ -703,10 +704,10 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 	switch_assert(member != NULL);
 	switch_mutex_lock(conference->mutex);
 
-	if (member->rec) {
+	if (member->rec) {//是否需要录音
 		conference->recording_members++;
 	}
-
+	//成员获取会议的动态参数
 	member->join_time = switch_epoch_time_now(NULL);
 	member->conference = conference;
 	member->energy_level = conference->energy_level;
@@ -718,27 +719,27 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 	member->verbose_events = conference->verbose_events;
 	member->video_layer_id = -1;
 	member->layer_timeout = DEFAULT_LAYER_TIMEOUT;
-
+	//DTMF列表
 	switch_queue_create(&member->dtmf_queue, 100, member->pool);
 
 	conference_utils_member_set_flag_locked(member, MFLAG_INTREE);
 	conference_cdr_add(member);
 
-	if (!conference_utils_member_test_flag(member, MFLAG_NOCHANNEL)) {
+	if (!conference_utils_member_test_flag(member, MFLAG_NOCHANNEL)) {//什么时候没有channel
 
 		conference_api_set_agc(member, NULL);
 
 		if (switch_core_session_media_flow(member->session, SWITCH_MEDIA_TYPE_VIDEO) == SWITCH_MEDIA_FLOW_SENDONLY) {
-			conference_utils_member_clear_flag_locked(member, MFLAG_CAN_BE_SEEN);
+			conference_utils_member_clear_flag_locked(member, MFLAG_CAN_BE_SEEN);//视频只收不发
 		}
 
-		if (conference_utils_member_test_flag(member, MFLAG_GHOST)) {
+		if (conference_utils_member_test_flag(member, MFLAG_GHOST)) {//gost用户
 			conference->count_ghosts++;
 		} else {
 			conference->count++;
 		}
 
-		if (conference_utils_member_test_flag(member, MFLAG_ENDCONF)) {
+		if (conference_utils_member_test_flag(member, MFLAG_ENDCONF)) {//不知道??
 			if (conference->end_count++) {
 				conference->endconference_time = 0;
 			}
@@ -747,20 +748,20 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		channel = switch_core_session_get_channel(member->session);
 
 		if (switch_true(switch_channel_get_variable_dup(member->channel, "video_second_screen", SWITCH_FALSE, -1))) {
-			conference_utils_member_set_flag(member, MFLAG_SECOND_SCREEN);
+			conference_utils_member_set_flag(member, MFLAG_SECOND_SCREEN);//没用过??
 		}
 
-		conference_video_check_avatar(member, SWITCH_FALSE);
+		conference_video_check_avatar(member, SWITCH_FALSE);//也没用过??
 
 
 		if ((var = switch_channel_get_variable_dup(member->channel, "video_logo_path", SWITCH_FALSE, -1))) {
-			conference_member_set_logo(member, var);
+			conference_member_set_logo(member, var);//LOGO设置
 		}
 
 		if ((var = switch_channel_get_variable_dup(member->channel, "video_codec_group", SWITCH_FALSE, -1))) {
-			member->video_codec_group = switch_core_strdup(member->pool, var);
+			member->video_codec_group = switch_core_strdup(member->pool, var);//组的视频编码？
 		}
-
+		//如果channel带会议参数，把它设置在member里
 		if ((var = switch_channel_get_variable_dup(member->channel, "conference_join_volume_in", SWITCH_FALSE, -1))) {
 			uint32_t id = atoi(var);
 
@@ -848,7 +849,7 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		}
 
 		
-		switch_channel_set_variable_printf(channel, "conference_member_id", "%d", member->id);
+		switch_channel_set_variable_printf(channel, "conference_member_id", "%d", member->id);//使用成员的ID作为会议成员ID
 		switch_channel_set_variable_printf(channel, "conference_moderator", "%s", conference_utils_member_test_flag(member, MFLAG_MOD) ? "true" : "false");
 		switch_channel_set_variable_printf(channel, "conference_ghost", "%s", conference_utils_member_test_flag(member, MFLAG_GHOST) ? "true" : "false");
 		switch_channel_set_variable(channel, "conference_recording", conference->record_filename);
@@ -867,17 +868,17 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 
 
 		if (conference_utils_test_flag(conference, CFLAG_WAIT_MOD) && conference_utils_member_test_flag(member, MFLAG_MOD)) {
-			conference_utils_clear_flag(conference, CFLAG_WAIT_MOD);
+			conference_utils_clear_flag(conference, CFLAG_WAIT_MOD);//是否允许设置
 		}
 
-		if (conference->count > 1) {
+		if (conference->count > 1) {//如果用户数不是1，停止播放背景音乐
 			if (((conference->moh_sound || conference->tmp_moh_sound) && !conference_utils_test_flag(conference, CFLAG_WAIT_MOD)) ||
 				(conference_utils_test_flag(conference, CFLAG_WAIT_MOD) && !switch_true(switch_channel_get_variable(channel, "conference_permanent_wait_mod_moh")))) {
 				/* stop MoH if any */
 				conference_file_stop(conference, FILE_STOP_ASYNC);
 				conference_utils_clear_flag(conference, CFLAG_NO_MOH);
 			}
-
+			//是否需要提示用户进入的声音
 			if (!switch_channel_test_app_flag_key("conference_silent", channel, CONF_SILENT_REQ)) {
 				const char * enter_sound = switch_channel_get_variable(channel, "conference_enter_sound");
 				if (conference_utils_test_flag(conference, CFLAG_ENTER_SOUND) && !conference_utils_member_test_flag(member, MFLAG_SILENT)) {
@@ -891,7 +892,7 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 			}
 		}
 
-
+		//如果channel里面有呼叫列表，自动呼叫这些列表的用户
 		call_list = (call_list_t *) switch_channel_get_private(channel, "_conference_autocall_list_");
 
 		if (call_list) {
@@ -935,7 +936,7 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		switch_channel_clear_app_flag_key("conference_silent", channel, CONF_SILENT_REQ);
 		switch_channel_set_app_flag_key("conference_silent", channel, CONF_SILENT_DONE);
 
-
+		//位置
 		if ((position = switch_channel_get_variable(channel, "conference_position"))) {
 
 			if (conference->channels == 2) {
@@ -958,7 +959,7 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		}
 
 
-
+		//主席权限等
 		controls = switch_channel_get_variable(channel, "conference_controls");
 
 		if (zstr(controls)) {
@@ -980,7 +981,7 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		}
 
 	}
-
+	//产生事件
 	if (conference->la && member->channel) {
 		if (!conference_utils_member_test_flag(member, MFLAG_SECOND_SCREEN)) {
 			cJSON *dvars;
@@ -1032,9 +1033,9 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		}
 
 	}
-
+	
 	switch_mutex_lock(conference->member_mutex);
-	member->next = conference->members;
+	member->next = conference->members;//单向list插入
 	conference->members = member;
 	switch_mutex_unlock(conference->member_mutex);
 	switch_mutex_unlock(conference->mutex);
@@ -1048,11 +1049,11 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 		conference_al_gen_arc(conference, NULL);
 	}
 
-
+	//发送事件
 	conference_event_send_rfc(conference);
 	conference_event_send_json(conference);
 
-
+	//谁是主屏
 	conference_video_find_floor(member, SWITCH_TRUE);
 
 
@@ -1068,7 +1069,7 @@ switch_status_t conference_member_add(conference_obj_t *conference, conference_m
 
 	return status;
 }
-
+//设置主席
 void conference_member_set_floor_holder(conference_obj_t *conference, conference_member_t *member, uint32_t id)
 {
 	switch_event_t *event;
@@ -1147,7 +1148,7 @@ void conference_member_set_floor_holder(conference_obj_t *conference, conference
 		switch_thread_rwlock_unlock(lmember->rwlock);
 	}
 }
-
+//tiger 删除成员
 /* Gain exclusive access and remove the member from the list */
 switch_status_t conference_member_del(conference_obj_t *conference, conference_member_t *member)
 {
@@ -1164,24 +1165,24 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 	switch_thread_rwlock_wrlock(member->rwlock);
 
 	if (member->video_queue) {
-		conference_video_flush_queue(member->video_queue, 0);
+		conference_video_flush_queue(member->video_queue, 0);//丢弃
 	}
 
 	if (member->session && (exit_sound = switch_channel_get_variable(switch_core_session_get_channel(member->session), "conference_exit_sound"))) {
-		conference_file_play(conference, (char *)exit_sound, CONF_DEFAULT_LEADIN,
+		conference_file_play(conference, (char *)exit_sound, CONF_DEFAULT_LEADIN,//播放退出声音
 							 switch_core_session_get_channel(member->session), 0);
 	}
 
-	conference_member_set_logo(member, NULL);
+	conference_member_set_logo(member, NULL);//图像的log
 	
 	lock_member(member);
 
-	conference_member_del_relationship(member, 0);
+	conference_member_del_relationship(member, 0);//删除关系？
 
-	conference_cdr_del(member);
+	conference_cdr_del(member);//cdr是话单吧
 	
 	if (member->agc) {
-		switch_agc_destroy(&member->agc);
+		switch_agc_destroy(&member->agc);//自动增益
 	}
 
 #ifdef OPENAL_POSITIONING
@@ -1190,7 +1191,7 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 	}
 #endif
 
-	member_fnode = member->fnode;
+	member_fnode = member->fnode;//RESET
 	member_sh = member->sh;
 	member->fnode = NULL;
 	member->sh = NULL;
@@ -1209,17 +1210,17 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 	conference_utils_member_clear_flag(member, MFLAG_INTREE);
 
 
-	switch_safe_free(member->text_framedata);
+	switch_safe_free(member->text_framedata);//可能是文本
 	member->text_framesize = 0;
 	if (member->text_buffer) {
 		switch_buffer_destroy(&member->text_buffer);
 	}
 
 	if (member->rec) {
-		conference->recording_members--;
+		conference->recording_members--;//不需要录音了
 	}
 
-	for (imember = conference->members; imember; imember = imember->next) {
+	for (imember = conference->members; imember; imember = imember->next) {//修改list，将member从列表中移除
 		if (imember == member) {
 			if (last) {
 				last->next = imember->next;
@@ -1267,7 +1268,7 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 		conference_member_set_floor_holder(member->conference, NULL, 0);
 	}
 
-	if (member->id == member->conference->video_floor_holder) {
+	if (member->id == member->conference->video_floor_holder) {//是会议主席吗？
 		conference_utils_clear_flag(member->conference, CFLAG_VID_FLOOR_LOCK);
 		if (member->conference->last_video_floor_holder) {
 			member->conference->video_floor_holder = member->conference->last_video_floor_holder;
@@ -1276,7 +1277,7 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 		member->conference->video_floor_holder = 0;
 	}
 
-	if (!conference_utils_member_test_flag(member, MFLAG_NOCHANNEL)) {
+	if (!conference_utils_member_test_flag(member, MFLAG_NOCHANNEL)) {//统计用户数
 		switch_channel_t *channel = switch_core_session_get_channel(member->session);
 		if (conference_utils_member_test_flag(member, MFLAG_GHOST)) {
 			conference->count_ghosts--;
@@ -1286,14 +1287,14 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 
 		conference_video_check_flush(member, SWITCH_FALSE);
 
-		if (conference_utils_member_test_flag(member, MFLAG_ENDCONF)) {
+		if (conference_utils_member_test_flag(member, MFLAG_ENDCONF)) {//没有人，就写结束会议事件
 			if (!--conference->end_count) {
 				//conference_utils_set_flag_locked(conference, CFLAG_DESTRUCT);
 				conference->endconference_time = switch_epoch_time_now(NULL);
 			}
 		}
 
-		conference_send_presence(conference);
+		conference_send_presence(conference);//会议人数变化，发布状态
 		switch_channel_set_variable(channel, "conference_call_key", NULL);
 
 		if ((conference->min && conference_utils_test_flag(conference, CFLAG_ENFORCE_MIN) && (conference->count + conference->count_ghosts) < conference->min)
@@ -1302,7 +1303,7 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 		} else {
 			if (!switch_true(switch_channel_get_variable(channel, "conference_permanent_wait_mod_moh")) && conference_utils_test_flag(conference, CFLAG_WAIT_MOD)) {
 				/* Stop MOH if any */
-				conference_file_stop(conference, FILE_STOP_ASYNC);
+				conference_file_stop(conference, FILE_STOP_ASYNC);//tiger moh：music on hold
 			}
 			if (!exit_sound && conference->exit_sound && conference_utils_test_flag(conference, CFLAG_EXIT_SOUND) && !conference_utils_member_test_flag(member, MFLAG_SILENT)) {
 				conference_file_play(conference, conference->exit_sound, 0, channel, 0);
@@ -1322,10 +1323,10 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 	}
 
 	conference_video_find_floor(member, SWITCH_FALSE);
-	conference_video_detach_video_layer(member);
+	conference_video_detach_video_layer(member);//层
 
 	if (member->canvas) {
-		conference_video_destroy_canvas(&member->canvas);
+		conference_video_destroy_canvas(&member->canvas);//画布
 	}
 
 	member->conference = NULL;
@@ -1336,17 +1337,17 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 	switch_mutex_unlock(member->audio_in_mutex);
 
 
-	if (conference->la && member->session) {
+	if (conference->la && member->session) {//删除live array列表
 		switch_live_array_del(conference->la, switch_core_session_get_uuid(member->session));
 		//switch_live_array_clear_alias(conference->la, switch_core_session_get_uuid(member->session), "conference");
 		conference_event_adv_la(conference, member, SWITCH_FALSE);
 	}
 
-	conference_event_send_rfc(conference);
-	conference_event_send_json(conference);
+	conference_event_send_rfc(conference);//发送事件
+	conference_event_send_json(conference);//发送json
 
 	if (conference_utils_test_flag(conference, CFLAG_POSITIONAL)) {
-		conference_al_gen_arc(conference, NULL);
+		conference_al_gen_arc(conference, NULL);//位置
 	}
 
 	if (member->session) {
@@ -1358,7 +1359,7 @@ switch_status_t conference_member_del(conference_obj_t *conference, conference_m
 
 	return status;
 }
-
+//向所有成员发送dtmf，其实是直接放到用户的imember->dtmf_queue里面
 void conference_member_send_all_dtmf(conference_member_t *member, conference_obj_t *conference, const char *dtmf)
 {
 	conference_member_t *imember;
@@ -1378,7 +1379,7 @@ void conference_member_send_all_dtmf(conference_member_t *member, conference_obj
 
 				switch_zmalloc(dt, sizeof(*dt));
 				*dt = digit;
-				switch_queue_push(imember->dtmf_queue, dt);
+				switch_queue_push(imember->dtmf_queue, dt);//直接放到每个成员的dtmf_queue里面，若用户没有发送，是否有溢出风险？
 				switch_core_session_kill_channel(imember->session, SWITCH_SIG_BREAK);
 			}
 		}
@@ -1388,7 +1389,7 @@ void conference_member_send_all_dtmf(conference_member_t *member, conference_obj
 	switch_mutex_unlock(conference->mutex);
 }
 
-
+//tiger 向所有成员播放文件
 /* Play a file in the conference room to a member */
 switch_status_t conference_member_play_file(conference_member_t *member, char *file, uint32_t leadin, switch_bool_t mux)
 {
@@ -1407,19 +1408,19 @@ switch_status_t conference_member_play_file(conference_member_t *member, char *f
 	} else {
 		expanded = NULL;
 	}
-	if (!strncasecmp(file, "say:", 4)) {
+	if (!strncasecmp(file, "say:", 4)) {//如果是say
 		if (!zstr(file + 4)) {
-			status = conference_member_say(member, file + 4, leadin);
+			status = conference_member_say(member, file + 4, leadin);//
 		}
 		goto done;
 	}
-	if (!switch_is_file_path(file)) {
-		if (member->conference->sound_prefix) {
+	if (!switch_is_file_path(file)) {//如果是文件
+		if (member->conference->sound_prefix) {//如果有前缀
 			if (!(dfile = switch_mprintf("%s%s%s", member->conference->sound_prefix, SWITCH_PATH_SEPARATOR, file))) {
 				goto done;
 			}
 			file = dfile;
-		} else if (!zstr(file)) {
+		} else if (!zstr(file)) {//直接是文件
 			status = conference_member_say(member, file, leadin);
 			goto done;
 		}
@@ -1431,7 +1432,7 @@ switch_status_t conference_member_play_file(conference_member_t *member, char *f
 		goto done;
 	}
 	/* Create a node object */
-	if (!(fnode = switch_core_alloc(pool, sizeof(*fnode)))) {
+	if (!(fnode = switch_core_alloc(pool, sizeof(*fnode)))) {//tiger 为什么要创建fnode，不明白==>fnode 顾名思义吧
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member->session), SWITCH_LOG_CRIT, "Alloc Failure\n");
 		switch_core_destroy_memory_pool(&pool);
 		status = SWITCH_STATUS_MEMERR;
@@ -1505,7 +1506,7 @@ switch_status_t conference_member_play_file(conference_member_t *member, char *f
 
 	return status;
 }
-
+//
 /* Say some thing with TTS in the conference room */
 switch_status_t conference_member_say(conference_member_t *member, char *text, uint32_t leadin)
 {
@@ -1523,7 +1524,7 @@ switch_status_t conference_member_say(conference_member_t *member, char *text, u
 		return SWITCH_STATUS_FALSE;
 
 	switch_assert(conference != NULL);
-
+	//需要tts
 	if (!(conference->tts_engine && conference->tts_voice)) {
 		return SWITCH_STATUS_SUCCESS;
 	}
@@ -1535,7 +1536,7 @@ switch_status_t conference_member_say(conference_member_t *member, char *text, u
 	}
 
 	/* Create a node object */
-	if (!(fnode = switch_core_alloc(pool, sizeof(*fnode)))) {
+	if (!(fnode = switch_core_alloc(pool, sizeof(*fnode)))) {//fnode 顾名思义吧
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member->session), SWITCH_LOG_CRIT, "Alloc Failure\n");
 		switch_core_destroy_memory_pool(&pool);
 		return SWITCH_STATUS_MEMERR;
@@ -1568,7 +1569,7 @@ switch_status_t conference_member_say(conference_member_t *member, char *text, u
 			position = NULL;
 		} else {
 			channels = 1;
-			fnode->al = conference_al_create(pool);
+			fnode->al = conference_al_create(pool);//需要位置吗？不就tts语音吗？ fnode 顾名思义吧
 			if (conference_al_parse_position(fnode->al, position) != SWITCH_STATUS_SUCCESS) {
 				fnode->al = NULL;
 				channels = conference->channels;
@@ -1599,7 +1600,7 @@ switch_status_t conference_member_say(conference_member_t *member, char *text, u
 
 	/* Queue the node */
 	switch_mutex_lock(member->fnode_mutex);
-	for (nptr = member->fnode; nptr && nptr->next; nptr = nptr->next);
+	for (nptr = member->fnode; nptr && nptr->next; nptr = nptr->next);//这是干啥？==>准备插入
 
 	if (nptr) {
 		nptr->next = fnode;
@@ -1660,7 +1661,7 @@ void conference_member_itterator(conference_obj_t *conference, switch_stream_han
 	switch_mutex_unlock(conference->member_mutex);
 }
 
-
+//根据  获取cavas id
 int conference_member_get_canvas_id(conference_member_t *member, const char *val, switch_bool_t watching)
 {
 	int index = -1;
@@ -1723,22 +1724,22 @@ int conference_member_get_canvas_id(conference_member_t *member, const char *val
 	return index;
 }
 
-
+//TIGER080 tiger 会议的编解码设置在member里，和channel不同
 int conference_member_setup_media(conference_member_t *member, conference_obj_t *conference)
 {
 	switch_codec_implementation_t read_impl = { 0 };
 
 	switch_mutex_lock(member->audio_out_mutex);
 
-	switch_core_session_get_read_impl(member->session, &read_impl);
+	switch_core_session_get_read_impl(member->session, &read_impl);//获取实际的读得解码
 
 	if (switch_core_codec_ready(&member->read_codec)) {
-		switch_core_codec_destroy(&member->read_codec);
+		switch_core_codec_destroy(&member->read_codec);//如果读解码器，就释放？
 		memset(&member->read_codec, 0, sizeof(member->read_codec));
 	}
 
 	if (switch_core_codec_ready(&member->write_codec)) {
-		switch_core_codec_destroy(&member->write_codec);
+		switch_core_codec_destroy(&member->write_codec);//如果写解码器有就释放？
 		memset(&member->write_codec, 0, sizeof(member->write_codec));
 	}
 
@@ -1750,12 +1751,12 @@ int conference_member_setup_media(conference_member_t *member, conference_obj_t 
 	member->native_rate = member->orig_read_impl.samples_per_second;
 
 	/* Setup a Signed Linear codec for reading audio. */
-	if (switch_core_codec_init(&member->read_codec,
+	if (switch_core_codec_init(&member->read_codec,//tiger 初始化输入的转码
 							   "L16",
 							   NULL, NULL, read_impl.actual_samples_per_second, read_impl.microseconds_per_packet / 1000,
 							   read_impl.number_of_channels,
 							   SWITCH_CODEC_FLAG_ENCODE | SWITCH_CODEC_FLAG_DECODE, NULL, member->pool) == SWITCH_STATUS_SUCCESS) {
-		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member->session), SWITCH_LOG_DEBUG,
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member->session), SWITCH_LOG_DEBUG,//TIGER 日志提示
 						  "Raw Codec Activation Success L16@%uhz %d channel %dms\n",
 						  read_impl.actual_samples_per_second, read_impl.number_of_channels, read_impl.microseconds_per_packet / 1000);
 
@@ -1794,7 +1795,7 @@ int conference_member_setup_media(conference_member_t *member, conference_obj_t 
 
 
 	/* Setup a Signed Linear codec for writing audio. */
-	if (switch_core_codec_init(&member->write_codec,
+	if (switch_core_codec_init(&member->write_codec,//TIGER 输出的转码
 							   "L16",
 							   NULL,
 							   NULL,

@@ -133,7 +133,7 @@ struct switch_event_node;
   \return SWITCH_STATUS_SUCCESS when complete
 */
 SWITCH_DECLARE(switch_status_t) switch_event_init(switch_memory_pool_t *pool);
-
+//TIGER switch_event_ ÊÂ¼þ
 /*!
   \brief Stop the eventing system
   \return SWITCH_STATUS_SUCCESS when complete

@@ -7288,7 +7288,7 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 			switch_channel_set_flag(tech_pvt->channel, CF_REINVITE);
 		}
 
-		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Channel %s entering state [%s][%d]\n",
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Channel %s entering state [%s][%d]\n",//tiger statemachine 状态机
 						  switch_channel_get_name(channel), nua_callstate_name(ss_state), status);
 
 		if (r_sdp) {
@@ -7914,7 +7914,7 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 			const char *var;
 			uint8_t match = 0, is_ok = 1, is_t38 = 0;
 			tech_pvt->mparams.hold_laps = 0;
-
+			// tiger 如果配置说sip_ignore_reinvites，则忽略reinvite, 这里忽略了，ready状态就没什么事了
 				if ((var = switch_channel_get_variable(channel, "sip_ignore_reinvites")) && switch_true(var)) {
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Ignoring Re-invite\n");
 					nua_respond(tech_pvt->nh, SIP_200_OK, TAG_END());
@@ -8192,20 +8192,20 @@ static void sofia_handle_sip_i_state(switch_core_session_t *session, int status,
 						sofia_clear_flag(tech_pvt, TFLAG_NOREPLY);
 						goto done;
 					}
-
+					//tiger 重要
 					if (match) {
 						if (switch_core_media_choose_port(tech_pvt->session, SWITCH_MEDIA_TYPE_AUDIO, 0) != SWITCH_STATUS_SUCCESS) {
 							goto done;
-						}
-
+						}//TIGER 端口
+						//SDP
 						switch_core_media_gen_local_sdp(session, SDP_TYPE_RESPONSE, NULL, 0, NULL, 0);
-
+						//RTP
 						if (sofia_media_activate_rtp(tech_pvt) != SWITCH_STATUS_SUCCESS) {
 							switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Reinvite RTP Error!\n");
 							is_ok = 0;
 							switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 						}
-						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Processing updated SDP\n");
+						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Processing updated SDP\n");//TIGER 日志提示
 					} else {
 						if (switch_channel_test_flag(channel, CF_PROXY_MODE) || switch_channel_test_flag(channel, CF_PROXY_MEDIA)) {
 							nua_respond(tech_pvt->nh, SIP_200_OK, TAG_END());

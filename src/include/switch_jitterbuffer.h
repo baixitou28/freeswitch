@@ -43,7 +43,7 @@ typedef enum {
 	SJB_TEXT
 } switch_jb_type_t;
 
-
+//TIGER switch_jb_  jitter bufferº¯Êý
 SWITCH_BEGIN_EXTERN_C
 SWITCH_DECLARE(switch_status_t) switch_jb_create(switch_jb_t **jbp, switch_jb_type_t type,
 												 uint32_t min_frame_len, uint32_t max_frame_len, switch_memory_pool_t *pool);

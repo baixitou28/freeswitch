@@ -833,9 +833,9 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_parse_all_messages(switch_core_sessio
 {
 	switch_core_session_message_t *message;
 	int i = 0;
-
+	//取信令:如？
 	switch_ivr_parse_all_signal_data(session);
-
+	//取队列数据 具体数据？
 	while (switch_core_session_dequeue_message(session, &message) == SWITCH_STATUS_SUCCESS) {
 		i++;
 
@@ -907,7 +907,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_parse_all_events(switch_core_session_
 	}
 
 	switch_core_session_stack_count(session, 1);
-	
+	//处理所有消息
 	switch_ivr_parse_all_messages(session);
 
 	channel = switch_core_session_get_channel(session);
@@ -919,7 +919,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_parse_all_events(switch_core_session_
 			goto done;
 		}
 	}
-
+	//逐个处理事件event
 	while (switch_ivr_parse_next_event(session) == SWITCH_STATUS_SUCCESS) {
 		x++;
 	}
@@ -3514,7 +3514,7 @@ SWITCH_DECLARE(void) switch_ivr_delay_echo(switch_core_session_t *session, uint3
 
 	qlen = delay_ms / (interval);
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Setting delay to %dms (%d frames)\n", delay_ms, qlen);
-
+//
 	switch_jb_create(&jb, SJB_AUDIO, qlen, qlen, switch_core_session_get_pool(session));
 
 	if ((var = switch_channel_get_variable(channel, "delay_echo_debug_level"))) {
@@ -3526,41 +3526,44 @@ SWITCH_DECLARE(void) switch_ivr_delay_echo(switch_core_session_t *session, uint3
 	}
 
 	write_frame.codec = switch_core_session_get_read_codec(session);
-
+//
 	while (switch_channel_ready(channel)) {
 		switch_rtp_packet_t packet = { {0} };
 		switch_size_t plen = sizeof(packet);
-
+//读一帧
 		status = switch_core_session_read_frame(session, &read_frame, SWITCH_IO_FLAG_NONE, 0);
-
+//是否异常
 		if (!SWITCH_READ_ACCEPTABLE(status)) {
 			break;
 		}
-
+//cng:conformatible noise generation
 		if (switch_test_flag(read_frame, SFF_CNG)) {
 			continue;
 		}
 
-		if (read_frame->packet) {
-			is_rtp = 1;
+		if (read_frame->packet) {			
+			is_rtp = 1;//
+//放到jb中			
 			switch_jb_put_packet(jb, (switch_rtp_packet_t *) read_frame->packet, read_frame->packetlen);
 		} else if (is_rtp) {
+//		
 			continue;
 		} else {
+//		
 			ts += read_impl.samples_per_packet;
 			memcpy(packet.body, read_frame->data, read_frame->datalen);
 			packet.header.ts = htonl(ts);
 			packet.header.seq = htons(++seq);
 			packet.header.version = 2;
 		}
-
+//读取一帧
 		if (switch_jb_get_packet(jb, (switch_rtp_packet_t *) &packet, &plen) == SWITCH_STATUS_SUCCESS) {
 			write_frame.data = packet.body;
 			write_frame.datalen = (uint32_t) plen - 12;
 			write_frame.buflen = (uint32_t) plen;
-
+//写
 			status = switch_core_session_write_frame(session, &write_frame, SWITCH_IO_FLAG_NONE, 0);
-
+//是否异常
 			if (!SWITCH_READ_ACCEPTABLE(status)) {
 				break;
 			}

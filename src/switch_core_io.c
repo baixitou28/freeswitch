@@ -63,7 +63,8 @@ SWITCH_DECLARE(void) switch_core_gen_encoded_silence(unsigned char *data, const 
 	}
 
 }
-
+//TIGER040 重要 读一帧switch_core_session_read_frame
+//一般每20毫秒读一帧，如果读不到数据，也没有错误就产生一个静音包Comforat Noise Generation:CNG
 SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_session_t *session, switch_frame_t **frame, switch_io_flag_t flags,
 															   int stream_id)
 {
@@ -84,7 +85,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 		switch_mutex_unlock(session->codec_read_mutex);
 	} else {
 		switch_cond_next();
-		*frame = &runtime.dummy_cng_frame;
+		*frame = &runtime.dummy_cng_frame;//tiger1 静音包
 		return SWITCH_STATUS_SUCCESS;
 	}
 
@@ -92,27 +93,27 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 		if (switch_channel_test_flag(session->channel, CF_PROXY_MODE) || switch_channel_get_state(session->channel) == CS_HIBERNATE) {
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_CRIT, "%s reading on a session with no media!\n",
 							  switch_channel_get_name(session->channel));
-			switch_cond_next();
+			switch_cond_next();////如果是CODEC没有或者没准备好，就弄个静音
 			*frame = &runtime.dummy_cng_frame;
 			return SWITCH_STATUS_SUCCESS;
 		}
 
 		if (switch_channel_test_flag(session->channel, CF_AUDIO_PAUSE_READ)) {
-			switch_yield(20000);
+			switch_yield(20000);//如果是暂停读，就弄个静音
 			*frame = &runtime.dummy_cng_frame;
 			// switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Media Paused!!!!\n");
 			return SWITCH_STATUS_SUCCESS;
 		}
-
+		//没有解码器
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "%s has no read codec.\n", switch_channel_get_name(session->channel));
-		switch_channel_hangup(session->channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
+		switch_channel_hangup(session->channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);//提示错误
 		return SWITCH_STATUS_FALSE;
 	}
 
 	switch_mutex_lock(session->codec_read_mutex);
 
 	if (!switch_core_codec_ready(session->read_codec)) {
-		switch_mutex_unlock(session->codec_read_mutex);
+		switch_mutex_unlock(session->codec_read_mutex);//没有解码器
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "%s has no read codec.\n", switch_channel_get_name(session->channel));
 		switch_channel_hangup(session->channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
 		*frame = &runtime.dummy_cng_frame;
@@ -123,7 +124,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 
   top:
 
-	for(i = 0; i < 2; i++) {
+	for(i = 0; i < 2; i++) {//
 		if (session->dmachine[i]) {
 			switch_channel_dtmf_lock(session->channel);
 			switch_ivr_dmachine_ping(session->dmachine[i], NULL);
@@ -132,7 +133,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 	}
 
 	if (switch_channel_down(session->channel) || !switch_core_codec_ready(session->read_codec)) {
-		*frame = NULL;
+		*frame = NULL;//
 		status = SWITCH_STATUS_FALSE;
 		goto even_more_done;
 	}
@@ -152,13 +153,13 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 
 			msg.message_id = SWITCH_MESSAGE_HEARTBEAT_EVENT;
 			msg.numeric_arg = session->track_duration;
-			switch_core_session_receive_message(session, &msg);
+			switch_core_session_receive_message(session, &msg);//tiger 这里读什么？
 
 			switch_event_create(&event, SWITCH_EVENT_SESSION_HEARTBEAT);
 			switch_channel_event_set_data(session->channel, event);
-			switch_event_fire(&event);
+			switch_event_fire(&event);//
 		} else {
-			session->read_frame_count--;
+			session->read_frame_count--;//
 		}
 	}
 
@@ -168,12 +169,15 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 		status = SWITCH_STATUS_BREAK;
 		goto even_more_done;
 	}
-
+//tiger1 如果驱动实现了read_frame  如果是mod_portaudio在本地声卡中读，如果是mod_freetdm则在tdm板卡读
 	if (session->endpoint_interface->io_routines->read_frame) {
 		switch_mutex_unlock(session->read_codec->mutex);
 		switch_mutex_unlock(session->codec_read_mutex);
+		//读取数据
 		if ((status = session->endpoint_interface->io_routines->read_frame(session, frame, flags, stream_id)) == SWITCH_STATUS_SUCCESS) {
 			for (ptr = session->event_hooks.read_frame; ptr; ptr = ptr->next) {
+				//发往不同的event里面，以实现回调。 即书上说的"三通"
+				//比如写到录音文件里
 				if ((status = ptr->read_frame(session, frame, flags, stream_id)) != SWITCH_STATUS_SUCCESS) {
 					break;
 				}
@@ -193,7 +197,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 
 		switch_mutex_lock(session->codec_read_mutex);
 
-		if (!switch_core_codec_ready(session->read_codec)) {
+		if (!switch_core_codec_ready(session->read_codec)) {//还有解码器问题？
 			switch_mutex_unlock(session->codec_read_mutex);
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "%s has no read codec.\n", switch_channel_get_name(session->channel));
 			switch_channel_hangup(session->channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
@@ -231,7 +235,8 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 		status = SWITCH_STATUS_FALSE;
 		goto done;
 	}
-
+//TIGER1 重要，最重要？写的时候增加一个media_bug， 可以调用回调函数，进行处理
+//TIGER RECORD
 	if (session->bugs && !((*frame)->flags & SFF_CNG) && !((*frame)->flags & SFF_NOT_AUDIO)) {
 		switch_media_bug_t *bp;
 		switch_bool_t ok = SWITCH_TRUE;
@@ -283,7 +288,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 	}
 
 	codec_impl = *(*frame)->codec->implementation;
-
+//tiger 是否需要转码
 	if (session->read_codec->implementation->impl_id != codec_impl.impl_id) {
 		need_codec = TRUE;
 		tap_only = 0;
@@ -403,7 +408,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 		switch_clear_flag(session, SSF_READ_CODEC_RESET);
 	}
 
-
+//tiger 开始转码，转码还可能包含码率
 	if (status == SWITCH_STATUS_SUCCESS && need_codec) {
 		switch_frame_t *enc_frame, *read_frame = *frame;
 
@@ -760,9 +765,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 		}
 
 		if (session->read_codec) {
+//tiger 是否要转码率			
 			if (session->read_resampler) {
 				short *data = read_frame->data;
 				switch_mutex_lock(session->resample_mutex);
+//tiger1 调用转码处理函数				
 				switch_resample_process(session->read_resampler, data, (int) read_frame->datalen / 2 / session->read_resampler->channels);
 				memcpy(data, session->read_resampler->to, session->read_resampler->to_len * 2 * session->read_resampler->channels);
 				read_frame->samples = session->read_resampler->to_len;
@@ -809,6 +816,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 				enc_frame->codec->cur_frame = enc_frame;
 				switch_assert(enc_frame->datalen <= SWITCH_RECOMMENDED_BUFFER_SIZE);
 				switch_assert(session->enc_read_frame.datalen <= SWITCH_RECOMMENDED_BUFFER_SIZE);
+//TIGER1 书: 如果session当前的read_codec不是L16, 需要将L16的数据编码成read_codec指定的编码				
 				status = switch_core_codec_encode(session->read_codec,
 												  enc_frame->codec,
 												  enc_frame->data,
@@ -875,7 +883,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 		if (flag & SFF_CNG) {
 			switch_set_flag((*frame), SFF_CNG);
 		}
-		if (session->bugs) {
+		if (session->bugs) {//TIGER 对数据修改和替换
 			switch_media_bug_t *bp;
 			switch_bool_t ok = SWITCH_TRUE;
 			int prune = 0;
@@ -903,7 +911,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 				if (bp->ready && switch_test_flag(bp, SMBF_READ_PING)) {
 					switch_mutex_lock(bp->read_mutex);
 					bp->ping_frame = *frame;
-					if (bp->callback) {
+					if (bp->callback) {//TIGER 调用回调
 						if (bp->callback(bp, bp->user_data, SWITCH_ABC_TYPE_READ_PING) == SWITCH_FALSE
 							|| (bp->stop_time && bp->stop_time <= switch_epoch_time_now(NULL))) {
 							ok = SWITCH_FALSE;

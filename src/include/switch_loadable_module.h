@@ -97,7 +97,7 @@ SWITCH_BEGIN_EXTERN_C
   \return SWITCH_STATUS_SUCCESS when complete
  */
 SWITCH_DECLARE(switch_status_t) switch_loadable_module_init(switch_bool_t autoload);
-
+//TIGER switch_loadable_module_  дё©И╪сть
 /*!
   \brief Shutdown the module backend and call the shutdown routine in all loaded modules
  */

@@ -60,7 +60,7 @@ SWITCH_BEGIN_EXTERN_C
 	SWITCH_SHN_ON_REPORTING,
 	SWITCH_SHN_ON_DESTROY
 } switch_state_handler_name_t;
-
+//TIGER 模块接口函数，类似纯虚函数
 struct switch_state_handler_table {
 	/*! executed when the state changes to init */
 	switch_state_handler_t on_init;

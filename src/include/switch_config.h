@@ -81,7 +81,7 @@ struct switch_config {
 
 	int lockto;
 };
-
+//TIGER switch_config_  ¿çÆ½Ì¨º¯Êý
 /*!
   \brief Open a configuration file
   \param cfg (switch_config_t *) config handle to use

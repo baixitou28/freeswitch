@@ -38,32 +38,32 @@
  *
  */
 #include "mod_sofia.h"
-
+//网关注册
 static void sofia_reg_new_handle(sofia_gateway_t *gateway_ptr, int attach)
 {
 	int ss_state = nua_callstate_authenticating;
-
+	//
 	if (gateway_ptr->nh) {
 		nua_handle_bind(gateway_ptr->nh, NULL);
 		nua_handle_destroy(gateway_ptr->nh);
 		gateway_ptr->nh = NULL;
 		sofia_private_free(gateway_ptr->sofia_private);
 	}
-
+	//
 	gateway_ptr->nh = nua_handle(gateway_ptr->profile->nua, NULL,
 								 SIPTAG_CALL_ID_STR(gateway_ptr->uuid_str),
-								 SIPTAG_TO_STR(gateway_ptr->register_to),
+								 SIPTAG_TO_STR(gateway_ptr->register_to),//tiger 网关参考
 								 NUTAG_CALLSTATE_REF(ss_state), SIPTAG_FROM_STR(gateway_ptr->register_from), TAG_END());
 	if (attach) {
 		if (!gateway_ptr->sofia_private) {
 			switch_zmalloc(gateway_ptr->sofia_private, sizeof(*gateway_ptr->sofia_private));
 		}
-
+		//
 		switch_set_string(gateway_ptr->sofia_private->gateway_name, gateway_ptr->name);
 		nua_handle_bind(gateway_ptr->nh, gateway_ptr->sofia_private);
 	}
 }
-
+//注册subscribe的网关,这里sub 是subscribe的缩写
 static void sofia_reg_new_sub_handle(sofia_gateway_subscription_t *gw_sub_ptr)
 {
 	sofia_gateway_t *gateway_ptr = gw_sub_ptr->gateway;
@@ -99,7 +99,7 @@ static void sofia_reg_new_sub_handle(sofia_gateway_subscription_t *gw_sub_ptr)
 	switch_safe_free(register_host);
 	switch_safe_free(user_via);
 }
-
+//注销subscribe的网关
 static void sofia_reg_kill_sub(sofia_gateway_subscription_t *gw_sub_ptr)
 {
 	sofia_gateway_t *gateway_ptr = gw_sub_ptr->gateway;
@@ -117,33 +117,33 @@ static void sofia_reg_kill_sub(sofia_gateway_subscription_t *gw_sub_ptr)
 		}
 		return;
 	}
-
+	//unsubscribe 哪里冒出来的？
 	if (gw_sub_ptr->nh) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "UN-Subbing %s %s\n", gateway_ptr->name, gw_sub_ptr->event);
 		nua_unsubscribe(gw_sub_ptr->nh, NUTAG_URL(gw_sub_ptr->request_uri), TAG_END());
 	}
 }
-
+//注销已注册的网关
 static void sofia_reg_kill_reg(sofia_gateway_t *gateway_ptr)
 {
 
 	if (!gateway_ptr->nh) {
 		return;
 	}
-
+	//注销
 	if (gateway_ptr->state == REG_STATE_REGED || gateway_ptr->state == REG_STATE_UNREGISTER) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "UN-Registering %s\n", gateway_ptr->name);
 		nua_unregister(gateway_ptr->nh, NUTAG_URL(gateway_ptr->register_url), NUTAG_REGISTRAR(gateway_ptr->register_proxy), TAG_END());
 	} else {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Destroying registration handle for %s\n", gateway_ptr->name);
 	}
-
+	//清除网关相关的内存
 	sofia_private_free(gateway_ptr->sofia_private);
 	nua_handle_bind(gateway_ptr->nh, NULL);
 	nua_handle_destroy(gateway_ptr->nh);
 	gateway_ptr->nh = NULL;
 }
-
+//网关事件
 void sofia_reg_fire_custom_gateway_state_event(sofia_gateway_t *gateway, int status, const char *phrase)
 {
 	switch_event_t *s_event;
@@ -160,7 +160,7 @@ void sofia_reg_fire_custom_gateway_state_event(sofia_gateway_t *gateway, int sta
 		switch_event_fire(&s_event);
 	}
 }
-
+//自定义事件
 void sofia_reg_fire_custom_sip_user_state_event(sofia_profile_t *profile, const char *sip_user, const char *contact,
 							const char* from_user, const char* from_host, const char *call_id, sofia_sip_user_status_t status, int options_res, const char *phrase)
 {
@@ -180,7 +180,7 @@ void sofia_reg_fire_custom_sip_user_state_event(sofia_profile_t *profile, const 
 		switch_event_fire(&s_event);
 	}
 }
-
+//TIGER REGISTER 用户注销，和gw注销什么关系？
 void sofia_reg_unregister(sofia_profile_t *profile)
 {
 	sofia_gateway_t *gateway_ptr;
@@ -189,18 +189,18 @@ void sofia_reg_unregister(sofia_profile_t *profile)
 	switch_mutex_lock(mod_sofia_globals.hash_mutex);
 	for (gateway_ptr = profile->gateways; gateway_ptr; gateway_ptr = gateway_ptr->next) {
 
-		if (gateway_ptr->nh) {
+		if (gateway_ptr->nh) {//如果绑定gw，清空
 			nua_handle_bind(gateway_ptr->nh, NULL);
 		}
 
 		if (gateway_ptr->state == REG_STATE_REGED) {
-			sofia_reg_kill_reg(gateway_ptr);
+			sofia_reg_kill_reg(gateway_ptr);//如果gw已注册，那将gw注销
 		}
 
 		for (gw_sub_ptr = gateway_ptr->subscriptions; gw_sub_ptr; gw_sub_ptr = gw_sub_ptr->next) {
 
 			if (gw_sub_ptr->state == SUB_STATE_SUBED) {
-				sofia_reg_kill_sub(gw_sub_ptr);
+				sofia_reg_kill_sub(gw_sub_ptr);//注销subscribe的
 			}
 		}
 
@@ -787,7 +787,7 @@ void sofia_reg_expire_call_id(sofia_profile_t *profile, const char *call_id, int
 	switch_safe_free(dup);
 
 }
-
+//sql里面查询expire用户
 void sofia_reg_check_expire(sofia_profile_t *profile, time_t now, int reboot)
 {
 	char *sql;
@@ -875,7 +875,7 @@ long sofia_reg_uniform_distribution(int max)
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG9, "Generated random %ld, max is %d\n", (long) result, max);
 	return (long) result;
 }
-
+//查看ping 过期
 void sofia_reg_check_ping_expire(sofia_profile_t *profile, time_t now, int interval)
 {
 	char *sql;
@@ -1222,7 +1222,7 @@ void sofia_reg_close_handles(sofia_profile_t *profile)
 
 }
 
-
+//tiger register token
 uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nua_handle_t *nh, sip_t const *sip,
 								sofia_dispatch_event_t *de, sofia_regtype_t regtype, char *key,
 								  uint32_t keylen, switch_event_t **v_event, const char *is_nat, sofia_private_t **sofia_private_p, switch_xml_t *user_xml, const char *sw_acl_token)
@@ -1285,18 +1285,18 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 	char *sw_reg_host;
 	char *token_val = NULL;
 
-
+	//
 	if (sofia_private_p) {
 		sofia_private = *sofia_private_p;
 	}
-
+	//
 	if (sip && sip->sip_contact && sip->sip_contact->m_url->url_params) {
 		uparams = sip->sip_contact->m_url->url_params;
 	} else {
 		uparams = NULL;
 	}
 
-
+	//协议
 	if (sip && sip->sip_via && (vproto = sip->sip_via->v_protocol)) {
 		if (!strcasecmp(vproto, "sip/2.0/ws")) {
 			is_ws = 1;
@@ -1312,9 +1312,9 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			}
 		}
 	}
-
+	//
 	if (v_event && *v_event) pres_on_reg = switch_event_get_header(*v_event, "send-presence-on-register");
-
+	//
 	if (!(send_pres = switch_true(pres_on_reg))) {
 		if (pres_on_reg && !strcasecmp(pres_on_reg, "first-only")) {
 			send_pres = 2;
@@ -1323,13 +1323,13 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 
 	/* all callers must confirm that sip and sip->sip_request are not NULL */
 	switch_assert(sip != NULL && sip->sip_request != NULL);
-
+	//得到网络ip和端口
 	sofia_glue_get_addr(de->data->e_msg, network_ip, sizeof(network_ip), &network_port);
 
 	snprintf(network_port_c, sizeof(network_port_c), "%d", network_port);
 
 	snprintf(url_ip, sizeof(url_ip), (msg_addrinfo(de->data->e_msg))->ai_addr->sa_family == AF_INET6 ? "[%s]" : "%s", network_ip);
-
+	//重要参数
 	expires = sip->sip_expires;
 	authorization = sip->sip_authorization;
 	contact = sip->sip_contact;
@@ -1373,7 +1373,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 	if (zstr(sub_host)) {
 		sub_host = to_host;
 	}
-
+	//根据contact处理
 	if (contact) {
 		const char *port = contact->m_url->url_port;
 		char new_port[25] = "";
@@ -1381,7 +1381,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 		char *path_encoded = NULL;
 		int path_encoded_len = 0;
 
-
+		//判断协议类型 tls,ws,sips,tcp
 		if (uparams && switch_stristr("transport=tls", uparams)) {
 			is_tls += 1;
 			if (sofia_test_pflag(profile, PFLAG_TLS_ALWAYS_NAT)) {
@@ -1408,9 +1408,9 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 				is_nat = "tcp";
 			}
 		}
-
+		//别名
 		display = contact->m_display;
-
+		//描述，利于调试
 		if (is_nat) {
 			if (is_tls) {
 				reg_desc = "Registered(TLS-NAT)";
@@ -1450,7 +1450,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			display = display_m;
 		}
 
-
+		//TIGER sip_path
 		if (sip->sip_path) {
 			char *path_stripped = NULL;
 			char *path_val_to_encode = NULL;
@@ -1492,15 +1492,15 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			switch_url_encode(my_contact_str, path_encoded + 9, path_encoded_len - 9);
 			exptime = 30;
 		}
-
+		//端口
 		if (port) {
 			switch_snprintf(new_port, sizeof(new_port), ":%s", port);
 		}
-
+		//nat recv显示
 		if (is_nat && sofia_test_pflag(profile, PFLAG_RECIEVED_IN_NAT_REG_CONTACT)) {
 			switch_snprintf(received_data, sizeof(received_data), ";received=%s:%d", url_ip, network_port);
 		}
-
+		//打印contact
 		if (uparams) {
 			switch_snprintf(contact_str, sizeof(contact_str), "%s <%s:%s@%s%s;%s%s%s%s>",
 							display, proto, contact->m_url->url_user, contact_host, new_port,
@@ -1514,19 +1514,19 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 
 		switch_safe_free(path_encoded);
 	}
-
+	//expires还剩多少
 	if (expires) {
 		exptime = expires->ex_delta;
 	} else if (contact && contact->m_expires) {
 		exptime = atol(contact->m_expires);
 	}
-
+	//
 	if (regtype == REG_REGISTER) {
 		authorization = sip->sip_authorization;
-	} else if (regtype == REG_INVITE) {
+	} else if (regtype == REG_INVITE) {//不理解
 		authorization = sip->sip_proxy_authorization;
 	}
-
+	//
 	if (regtype == REG_AUTO_REGISTER || (regtype == REG_REGISTER && sofia_test_pflag(profile, PFLAG_BLIND_REG))) {
 		regtype = REG_REGISTER;
 		if (!zstr(sw_acl_token)) {
@@ -1536,16 +1536,16 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			to_user = sw_to_user;
 			reg_host = sw_reg_host;
 		}
-		goto reg;
+		goto reg;//
 	}
-
+	//
 	if (authorization) {
 		char *v_contact_str = NULL;
 		const char *username = "unknown";
 		const char *realm = reg_host;
 		if ((auth_res = sofia_reg_parse_auth(profile, authorization, sip, de, sip->sip_request->rq_method_name,
 											 key, keylen, network_ip, network_port, v_event, exptime, regtype, to_user, &auth_params, &reg_count, user_xml)) == AUTH_STALE) {
-			stale = 1;
+			stale = 1;//解析auth，并标识为已解析
 		}
 
 
@@ -1572,7 +1572,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "realm", realm);
 			switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "user-agent", agent);
 
-            switch (auth_res) {
+            switch (auth_res) {//auth结果
             case AUTH_OK:
                 switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "auth-result", "SUCCESS");
                 break;
@@ -1586,7 +1586,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
                 switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "auth-result", "FORBIDDEN");
                 break;
             }
-			switch_event_fire(&s_event);
+			switch_event_fire(&s_event);//产生事件
 		}
 
 		if (contact && exptime && v_event && *v_event) {
@@ -1594,7 +1594,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			uint32_t exp_max_deviation_var;
 			char *allow_multireg = NULL;
 			int auto_connectile = 0;
-
+			//是否允许多个设备注册
 			allow_multireg = switch_event_get_header(*v_event, "sip-allow-multiple-registrations");
 			if (allow_multireg && switch_false(allow_multireg)) {
 				avoid_multi_reg = 1;
@@ -1607,7 +1607,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			if ((force_user = switch_event_get_header(*v_event, "sip-force-user"))) {
 				to_user = force_user;
 			}
-
+			//如果不是nat,需要恢复默认的一些值
 			if (!is_tcp && !is_tls && (zstr(network_ip) || !switch_check_network_list_ip(network_ip, profile->local_network)) &&
 				profile->server_rport_level >= 2 && sip->sip_user_agent &&
 				sip->sip_user_agent->g_string &&
@@ -1631,7 +1631,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 					auto_connectile = 1;
 				}
 			}
-
+			//TIGER REGISTER AUTO-REGISTER
 			if (auto_connectile || (v_contact_str = switch_event_get_header(*v_event, "sip-force-contact"))) {
 				if (auto_connectile || (!strcasecmp(v_contact_str, "NDLB-connectile-dysfunction-2.0"))) {
 					char *path_encoded = NULL;
@@ -1688,7 +1688,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 					}
 				}
 			}
-
+			//expire值验证
 			if ( (( exp_var = atoi(switch_event_get_header_nil(*v_event, "sip-force-expires-min")) )) ||
 			     (( exp_var = profile->sip_force_expires_min )) ) {
 				if ( (exp_var > 0) && (exptime < exp_var) ) {
@@ -1720,15 +1720,15 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			}
 
 		}
-
+		//如果验证不通过
 		if (auth_res != AUTH_OK && auth_res != AUTH_RENEWED && !stale) {
 			if (auth_res == AUTH_FORBIDDEN) {
 				nua_respond(nh, SIP_403_FORBIDDEN, NUTAG_WITH_THIS_MSG(de->data->e_msg), TAG_END());
-				forbidden = 1;
+				forbidden = 1;//拒绝
 			} else {
 				nua_respond(nh, SIP_401_UNAUTHORIZED, NUTAG_WITH_THIS_MSG(de->data->e_msg), TAG_END());
 			}
-
+			//如果是调试模式，打印，可以看看是哪个参数
 			if (profile->debug) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Send %s for [%s@%s]\n",
 								  forbidden ? "forbidden" : "challenge", to_user, to_host);
@@ -1776,13 +1776,13 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "user-agent", agent);
 			switch_event_fire(&s_event);
 		}
-
+		//什么时候这个
 		if (zstr(realm) || !strcasecmp(realm, "auto_to")) {
 			realm = to_host;
 		} else if (!strcasecmp(realm, "auto_from")) {
 			realm = from_host;
 		}
-
+		//是否
 		sofia_reg_auth_challenge(profile, nh, de, regtype, realm, stale, exptime);
 
 		if (profile->debug) {
@@ -1799,19 +1799,19 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 	}
 
 	if (!contact)
-		goto respond_200_ok;
+		goto respond_200_ok;//如果没有contact，回复200ok，//TIGER todo 不理解
 
   reg:
 
-
+	//
 	if (v_event && *v_event && (var = switch_event_get_header(*v_event, "sip-force-extension"))) {
 		to_user = var;
 	}
-
+	//
 	if (v_event && *v_event && (var = switch_event_get_header(*v_event, "registration_metadata"))) {
 		reg_meta = var;
 	}
-
+	//啥意思?
 	/* associated MWI account */
 	if (v_event && *v_event && (mwi_account = switch_event_get_header(*v_event, "mwi-account"))) {
 		dup_mwi_account = strdup(mwi_account);
@@ -1825,7 +1825,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 	if (!mwi_host) {
 		mwi_host = (char *) reg_host;
 	}
-
+	//如何查询
 	/* per-profile unsolicited MWI on register */
 	if (sofia_test_pflag(profile, PFLAG_MESSAGE_QUERY_ON_REGISTER)) {
 		send_message_query = 2;
@@ -1845,7 +1845,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			send_message_query = 0;
 		}
 	}
-
+	//是否要不停ping
 	/* per-account enable options ping on register */
 	if (v_event && *v_event && (var = switch_event_get_header(*v_event, "force_ping"))) {
 		if (switch_true(var)) {
@@ -1854,12 +1854,12 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			force_ping = 0;
 		}
 	}
-
+	//如果不是register，可以结束了。
 	if (regtype != REG_REGISTER) {
 		switch_goto_int(r, 0, end);
 	}
 
-
+	//multi register允许吗？
 	/* Does this profile supports multiple registrations ? */
 	multi_reg = (sofia_test_pflag(profile, PFLAG_MULTIREG)) ? 1 : 0;
 	multi_reg_contact = (sofia_test_pflag(profile, PFLAG_MULTIREG_CONTACT)) ? 1 : 0;
@@ -1870,7 +1870,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 						  "Disabling multiple registrations on a per-user basis for %s@%s\n", switch_str_nil(to_user), switch_str_nil(to_host));
 		multi_reg = 0;
 	}
-
+	//超时
 	if (exptime) {
 		char guess_ip4[256];
 		const char *username = "unknown";
@@ -2041,7 +2041,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 
 		if (multi_reg) {
 			if (sofia_reg_reg_count(profile, to_user, sub_host) > 0) {
-				send = 0;
+				send = 0;//如果已经有注册了send 为0，是不是条件写反了?
 			}
 		}
 
@@ -2057,7 +2057,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "status", "Unregistered");
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "presence-source", "register");
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "event_type", "presence");
-			switch_event_fire(&event);
+			switch_event_fire(&event);//产生注册事件，多个设备不要多次提示吗？
 		}
 
 
@@ -2070,9 +2070,9 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			if ((p = strchr(icontact + 4, ':'))) {
 				*p = '\0';
 			}
-
+			//删除历史的register
 			if (multi_reg_contact) {
-				sql =
+				sql =//如果是多个contact，要复杂一点
 					switch_mprintf("delete from sip_registrations where sip_user='%q' and sip_host='%q' and contact='%q'", to_user, reg_host, contact_str);
 			} else {
 				sql = switch_mprintf("delete from sip_registrations where call_id='%q'", call_id);
@@ -2132,7 +2132,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 							switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "event_type", "presence");
 							switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "presence-source", "register");
 							switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "alt_event_type", "dialog");
-							switch_event_fire(&s_event);
+							switch_event_fire(&s_event);//PRESENCE_PROBE_ON事件
 						}
 					} else {
 						if (switch_event_create(&s_event, SWITCH_EVENT_PRESENCE_IN) == SWITCH_STATUS_SUCCESS) {
@@ -2142,11 +2142,11 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 							switch_event_add_header(s_event, SWITCH_STACK_BOTTOM, "from", "%s@%s", to_user, sub_host);
 							switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "rpid", "unknown");
 							switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "status", "Registered");
-							switch_event_fire(&s_event);
+							switch_event_fire(&s_event);//PRESENCE_IN事件
 						}
 					}
 				}
-			} else {
+			} else {//如果没有contact
 				const char *username = "unknown";
 				const char *realm = "unknown";
 
@@ -2154,9 +2154,9 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 					username = switch_event_get_header(auth_params, "sip_auth_username");
 					realm = switch_event_get_header(auth_params, "sip_auth_realm");
 				}
-
+				//删除数据库中
 				switch_core_del_registration(to_user, reg_host, call_id);
-
+				//自定义的事件
 				if (switch_event_create_subclass(&s_event, SWITCH_EVENT_CUSTOM, MY_EVENT_UNREGISTER) == SWITCH_STATUS_SUCCESS) {
 					switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "profile-name", profile->name);
 					switch_event_add_header_string(s_event, SWITCH_STACK_BOTTOM, "username", username);
@@ -2178,7 +2178,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 				}
 			}
 		}
-
+		//时间
 		switch_rfc822_date(date, switch_micro_time_now());
 
 		/* generate and respond a 200 OK */
@@ -2186,7 +2186,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 		if ((profile->ndlb & PFLAG_NDLB_EXPIRES_IN_REGISTER_RESPONSE)) {
 			switch_snprintf(expbuf, sizeof(expbuf), "%ld", exptime);
 		}
-
+		//
 		if (mod_sofia_globals.reg_deny_binding_fetch_and_no_lookup) {
 			/* handle backwards compatibility - contacts will not be looked up but only copied from the request into the response
 			   remove this condition later if nobody complains about the extra select of the below new behavior
@@ -2203,9 +2203,9 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 				contact_tags[i].t_tag = siptag_contact_str;
 				contact_tags[i].t_value = (tag_value_t) m->val;
 				++i;
-			}
+			}//找到contact
 
-
+			//发送200 OK
 			nua_respond(nh, SIP_200_OK, TAG_IF(path_val, SIPTAG_PATH_STR(path_val)),
 						TAG_IF(!zstr(expbuf), SIPTAG_EXPIRES_STR(expbuf)),
 						NUTAG_WITH_THIS_MSG(de->data->e_msg), SIPTAG_DATE_STR(date), TAG_NEXT(contact_tags));
@@ -2213,14 +2213,14 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 			switch_safe_free(contact_tags);
 			switch_console_free_matches(&contact_list);
 
-		} else {
+		} else {//如果没有contact
 			/* respond without any contacts */
 			nua_respond(nh, SIP_200_OK, TAG_IF(path_val, SIPTAG_PATH_STR(path_val)),
 						TAG_IF(!zstr(expbuf), SIPTAG_EXPIRES_STR(expbuf)),
 						NUTAG_WITH_THIS_MSG(de->data->e_msg), SIPTAG_DATE_STR(date), TAG_END());
 		}
 
-
+		//发送多个事件
 		if (s_event) {
 			switch_event_fire(&s_event);
 		}
@@ -2248,7 +2248,7 @@ uint8_t sofia_reg_handle_register_token(nua_t *nua, sofia_profile_t *profile, nu
 }
 
 
-
+// tiger 这里的i，可能是incoming？处理客户端的register， 这个函数主要判断nat类型和acl权限，其他委托sofia_reg_handle_register_token函数完成
 void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_handle_t *nh, sofia_private_t **sofia_private_p, sip_t const *sip,
 									 sofia_dispatch_event_t *de,
 									 tagi_t tags[])
@@ -2274,7 +2274,7 @@ void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_h
 		}
 	}
 #endif
-
+	//网络端口和地址
 	sofia_glue_get_addr(de->data->e_msg, network_ip, sizeof(network_ip), &network_port);
 
 	/* backwards compatibility */
@@ -2283,12 +2283,12 @@ void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_h
 		nua_respond(nh, 400, "Missing Contact Header", TAG_END());
 		goto end;
 	}
-
+	//禁止 ?不理解
 	if (!(profile->mflags & MFLAG_REGISTER)) {
 		nua_respond(nh, SIP_403_FORBIDDEN, NUTAG_WITH_THIS_MSG(de->data->e_msg), TAG_END());
 		goto end;
 	}
-
+	//如果是NAT，设置是NAT哪种模式，注意这里的次序
 	if (sofia_test_pflag(profile, PFLAG_AGGRESSIVE_NAT_DETECTION)) {
 		if (sip && sip->sip_via) {
 			const char *port = sip->sip_via->v_port;
@@ -2308,7 +2308,7 @@ void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_h
 			}
 		}
 	}
-
+	//如果不是nat，可能和nat_acl有关，这个我没有用过 //TIGER register reg_acl_count //TIGER todo
 	if (!is_nat && profile->nat_acl_count) {
 		uint32_t x = 0;
 		int ok = 1;
@@ -2326,13 +2326,13 @@ void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_h
 					break;
 				}
 			}
-
+			//标记nat 类型
 			if (ok) {
 				is_nat = last_acl;
 			}
 		}
 	}
-
+	//TIGER register reg_acl_count //TIGER todo
 	if (profile->reg_acl_count) {
 		uint32_t x = 0;
 		int ok = 1;
@@ -2352,13 +2352,13 @@ void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_h
 		} else if (!ok) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_WARNING, "IP %s Rejected by register acl \"%s\"\n", network_ip, profile->reg_acl[x]);
 			nua_respond(nh, SIP_403_FORBIDDEN, NUTAG_WITH_THIS_MSG(de->data->e_msg), TAG_END());
-			goto end;
+			goto end;//acl 禁止
 		}
 	}
 
 	if (!sip || !sip->sip_request || !sip->sip_request->rq_method_name) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Received an invalid packet!\n");
-		nua_respond(nh, SIP_500_INTERNAL_SERVER_ERROR, TAG_END());
+		nua_respond(nh, SIP_500_INTERNAL_SERVER_ERROR, TAG_END());//包不对，收到错误类型
 		goto end;
 	}
 
@@ -2366,9 +2366,9 @@ void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_h
 		if (profile->debug) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "IP %s is on local network, not seting NAT mode.\n", network_ip);
 		}
-		is_nat = NULL;
+		is_nat = NULL;//可能判断错误，不是nat
 	}
-
+	//注意带了acl token
 	sofia_reg_handle_register_token(nua, profile, nh, sip, de, type, key, sizeof(key), &v_event, is_nat, sofia_private_p, NULL, acl_token);
 
 	if (v_event) {
@@ -2381,7 +2381,7 @@ void sofia_reg_handle_sip_i_register(nua_t *nua, sofia_profile_t *profile, nua_h
 
 }
 
-
+//tiger 应该注册刷新 这里的r可能是remote，这里是指fs注册到别的服务器上，收到的消息处理
 void sofia_reg_handle_sip_r_register(int status,
 									 char const *phrase,
 									 nua_t *nua, sofia_profile_t *profile, nua_handle_t *nh, sofia_private_t *sofia_private, sip_t const *sip,
@@ -2390,12 +2390,12 @@ void sofia_reg_handle_sip_r_register(int status,
 {
 	sofia_gateway_t *gateway = NULL;
 
-
+	//保护性编程
 	if (!sofia_private) {
 		nua_handle_destroy(nh);
 		return;
 	}
-
+	//有gw吗?查找并获得锁
 	if (sofia_private && !zstr(sofia_private->gateway_name)) {
 		gateway = sofia_reg_find_gateway(sofia_private->gateway_name);
 	}
@@ -2403,7 +2403,7 @@ void sofia_reg_handle_sip_r_register(int status,
 	if (sofia_private && gateway) {
 		reg_state_t ostate = gateway->state;
 		switch (status) {
-		case 200:
+		case 200://回复ok
 			if (sip && sip->sip_contact) {
 				sip_contact_t *contact = sip->sip_contact;
 				const char *new_expires;
@@ -2414,30 +2414,30 @@ void sofia_reg_handle_sip_r_register(int status,
 					for (; contact; contact = contact->m_next) {
 						if ((full = sip_header_as_string(nh->nh_home, (void *) contact))) {
 							if (switch_stristr(gateway->register_contact, full)) {
-								break;
+								break;//得到contact
 							}
 
 							su_free(nh->nh_home, full);
 						}
 					}
 				}
-
+				//设置contact
 				if (!contact) {
 					contact = sip->sip_contact;
 				}
-
+				//设置时间
 				if (contact->m_expires) {
 					new_expires = contact->m_expires;
 					expi = (uint32_t) atoi(new_expires);
 
-					if (expi > 0 && expi != gateway->freq) {
+					if (expi > 0 && expi != gateway->freq) {//变化了重新设置
 						//gateway->freq = expi;
 						//gateway->expires_str = switch_core_sprintf(gateway->pool, "%d", expi);
 
 						if (expi > 60) {
-							gateway->expires = switch_epoch_time_now(NULL) + (expi - 15);
+							gateway->expires = switch_epoch_time_now(NULL) + (expi - 15);//提前15秒
 						} else {
-							gateway->expires = switch_epoch_time_now(NULL) + (expi - 2);
+							gateway->expires = switch_epoch_time_now(NULL) + (expi - 2);//提前2秒
 						}
 
 
@@ -2448,26 +2448,26 @@ void sofia_reg_handle_sip_r_register(int status,
 			}
 			gateway->state = REG_STATE_REGISTER;
 			break;
-		case 100:
+		case 100://忽略
 			break;
-		default:
+		default://默认都是失败
 			gateway->state = REG_STATE_FAILED;
 			gateway->failure_status = status;
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "%s Failed Registration with status %s [%d]. failure #%d\n",
 							  gateway->name, switch_str_nil(phrase), status, ++gateway->failures);
 			break;
 		}
-		if (ostate != gateway->state) {
+		if (ostate != gateway->state) {//触发状态变化事件
 			sofia_reg_fire_custom_gateway_state_event(gateway, status, phrase);
 		}
 	}
-
+	//释放锁
 	if (gateway) {
 		sofia_reg_release_gateway(gateway);
 	}
 
 }
-
+//tiger register 实现challenge
 void sofia_reg_handle_sip_r_challenge(int status,
 									  char const *phrase,
 									  nua_t *nua, sofia_profile_t *profile, nua_handle_t *nh, sofia_private_t *sofia_private,
@@ -2671,7 +2671,7 @@ typedef struct {
 	switch_size_t nplen;
 	int last_nc;
 } nonce_cb_t;
-
+//nonce 的callback
 static int sofia_reg_nonce_callback(void *pArg, int argc, char **argv, char **columnNames)
 {
 	nonce_cb_t *cb = (nonce_cb_t *) pArg;
@@ -2683,7 +2683,7 @@ static int sofia_reg_nonce_callback(void *pArg, int argc, char **argv, char **co
 	}
 	return 0;
 }
-
+//注册次数也有callback?
 static int sofia_reg_regcount_callback(void *pArg, int argc, char **argv, char **columnNames)
 {
 	int *ret = (int *) pArg;
@@ -2692,7 +2692,7 @@ static int sofia_reg_regcount_callback(void *pArg, int argc, char **argv, char *
 	}
 	return 0;
 }
-
+//tiger 解析auth
 auth_res_t sofia_reg_parse_auth(sofia_profile_t *profile,
 								sip_authorization_t const *authorization,
 								sip_t const *sip,
@@ -3286,11 +3286,11 @@ auth_res_t sofia_reg_parse_auth(sofia_profile_t *profile,
 
 }
 
-
+//通过key查找
 sofia_gateway_t *sofia_reg_find_gateway__(const char *file, const char *func, int line, const char *key)
 {
 	sofia_gateway_t *gateway = NULL;
-
+	//通过key
 	switch_mutex_lock(mod_sofia_globals.hash_mutex);
 	if ((gateway = (sofia_gateway_t *) switch_core_hash_find(mod_sofia_globals.gateway_hash, key))) {
 		if (!sofia_test_pflag(gateway->profile, PFLAG_RUNNING) || gateway->deleted) {
@@ -3307,7 +3307,7 @@ sofia_gateway_t *sofia_reg_find_gateway__(const char *file, const char *func, in
 	return gateway;
 }
 
-
+//通过realm，即gateway->register_realm 来对比
 sofia_gateway_t *sofia_reg_find_gateway_by_realm__(const char *file, const char *func, int line, const char *key)
 {
 	sofia_gateway_t *gateway = NULL;
@@ -3315,7 +3315,7 @@ sofia_gateway_t *sofia_reg_find_gateway_by_realm__(const char *file, const char 
 	const void *var;
 	void *val;
 
-	switch_mutex_lock(mod_sofia_globals.hash_mutex);
+	switch_mutex_lock(mod_sofia_globals.hash_mutex);//全局找这个gw
 	for (hi = switch_core_hash_first(mod_sofia_globals.gateway_hash); hi; hi = switch_core_hash_next(&hi)) {
 		switch_core_hash_this(hi, &var, NULL, &val);
 		if (key && (gateway = (sofia_gateway_t *) val) && !gateway->deleted && gateway->register_realm && !strcasecmp(gateway->register_realm, key)) {
@@ -3328,12 +3328,12 @@ sofia_gateway_t *sofia_reg_find_gateway_by_realm__(const char *file, const char 
 
 	if (gateway) {
 		if (!sofia_test_pflag(gateway->profile, PFLAG_RUNNING) || gateway->deleted) {
-			gateway = NULL;
+			gateway = NULL;//状态是否正常，不正常，果断放弃。
 			goto done;
 		}
 		if (switch_thread_rwlock_tryrdlock(gateway->profile->rwlock) != SWITCH_STATUS_SUCCESS) {
 			switch_log_printf(SWITCH_CHANNEL_ID_LOG, file, func, line, NULL, SWITCH_LOG_ERROR, "Profile %s is locked\n", gateway->profile->name);
-			gateway = NULL;
+			gateway = NULL;//如果不能上锁，果断放弃
 		}
 	}
 	if (gateway) {
@@ -3368,7 +3368,7 @@ void sofia_reg_release_gateway__(const char *file, const char *func, int line, s
 	switch_log_printf(SWITCH_CHANNEL_ID_LOG, file, func, line, SWITCH_LOG_ERROR, "XXXXXXXXXXXXXX GW UNLOCK %s\n", gateway->profile->name);
 #endif
 }
-
+//TIGER
 switch_status_t sofia_reg_add_gateway(sofia_profile_t *profile, const char *key, sofia_gateway_t *gateway)
 {
 	switch_status_t status = SWITCH_STATUS_FALSE;
@@ -3383,16 +3383,16 @@ switch_status_t sofia_reg_add_gateway(sofia_profile_t *profile, const char *key,
 	switch_mutex_unlock(profile->gw_mutex);
 
 	switch_mutex_lock(mod_sofia_globals.hash_mutex);
-
+	//是否存在
 	if ((gp = switch_core_hash_find(mod_sofia_globals.gateway_hash, key))) {
-		if (gp->deleted) {
+		if (gp->deleted) {//如果是deleted，则删除先
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Removing deleted gateway from hash.\n");
 			switch_core_hash_delete(mod_sofia_globals.gateway_hash, gp->name);
 			switch_core_hash_delete(mod_sofia_globals.gateway_hash, pkey);
 			switch_core_hash_delete(mod_sofia_globals.gateway_hash, key);
 		}
 	}
-
+	//查找，如果没有就插入
 	if (!switch_core_hash_find(mod_sofia_globals.gateway_hash, key) && !switch_core_hash_find(mod_sofia_globals.gateway_hash, pkey)) {
 		status = switch_core_hash_insert(mod_sofia_globals.gateway_hash, key, gateway);
 		status = switch_core_hash_insert(mod_sofia_globals.gateway_hash, pkey, gateway);
@@ -3402,7 +3402,7 @@ switch_status_t sofia_reg_add_gateway(sofia_profile_t *profile, const char *key,
 	switch_mutex_unlock(mod_sofia_globals.hash_mutex);
 
 	free(pkey);
-
+	//如果加入成功，则生成事件
 	if (status == SWITCH_STATUS_SUCCESS) {
 		switch_event_t *s_event;
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Added gateway '%s' to profile '%s'\n", gateway->name, gateway->profile->name);

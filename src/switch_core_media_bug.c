@@ -228,7 +228,8 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_set_pre_buffer_framecount(
 
 	return SWITCH_STATUS_SUCCESS;
 }
-
+//TIGER BUG
+//TIGER RECORD
 SWITCH_DECLARE(switch_status_t) switch_core_media_bug_read(switch_media_bug_t *bug, switch_frame_t *frame, switch_bool_t fill)
 {
 	switch_size_t bytes = 0, datalen = 0;
@@ -587,7 +588,7 @@ static int flush_video_queue(switch_queue_t *q, int min)
 
 	return switch_queue_size(q);
 }
-
+//TIGER RECORD
 static void *SWITCH_THREAD_FUNC video_bug_thread(switch_thread_t *thread, void *obj)
 {
 	switch_media_bug_t *bug = (switch_media_bug_t *) obj;
@@ -787,7 +788,8 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_push_spy_frame(switch_medi
 
 	return SWITCH_STATUS_FALSE;
 }
-
+//tiger bug 在一个session里面加载多个bug
+//TIGER RECORD
 #define MAX_BUG_BUFFER 1024 * 512
 SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t *session,
 														  const char *function,
@@ -810,7 +812,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 			for (bp = session->bugs; bp; bp = bp->next) {
 				if (!zstr(bp->function) && !strcasecmp(function, bp->function)) {
 					punt = 1;
-					break;
+					break;//同名只允许一个
 				}
 			}
 			switch_thread_rwlock_unlock(session->bug_rwlock);
@@ -822,7 +824,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 		return SWITCH_STATUS_GENERR;
 	}
 
-
+//还没有开始
 	if (!switch_channel_media_ready(session->channel)) {
 		if (switch_channel_pre_answer(session->channel) != SWITCH_STATUS_SUCCESS) {
 			return SWITCH_STATUS_FALSE;
@@ -833,7 +835,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 
 	*new_bug = NULL;
 
-
+//TIGER record
 	if ((p = switch_channel_get_variable(session->channel, "media_bug_answer_req")) && switch_true(p)) {
 		flags |= SMBF_ANSWER_REQ;
 	}
@@ -862,18 +864,18 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 		switch_thread_rwlock_unlock(session->bug_rwlock);
 	}
 #endif
-
+//申请空间
 	if (!(bug = switch_core_session_alloc(session, sizeof(*bug)))) {
 		return SWITCH_STATUS_MEMERR;
 	}
-
+//初始化
 	bug->callback = callback;
 	bug->user_data = user_data;
 	bug->session = session;
 	bug->flags = flags;
 	bug->function = "N/A";
 	bug->target = "N/A";
-
+// ??
 	switch_core_session_get_read_impl(session, &bug->read_impl);
 	switch_core_session_get_write_impl(session, &bug->write_impl);
 
@@ -891,14 +893,14 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 	if (!bug->flags) {
 		bug->flags = (SMBF_READ_STREAM | SMBF_WRITE_STREAM);
 	}
-
+//是否创建动态读音频buffer
 	if (switch_test_flag(bug, SMBF_READ_STREAM) || switch_test_flag(bug, SMBF_READ_PING)) {
 		switch_buffer_create_dynamic(&bug->raw_read_buffer, bytes * SWITCH_BUFFER_BLOCK_FRAMES, bytes * SWITCH_BUFFER_START_FRAMES, MAX_BUG_BUFFER);
 		switch_mutex_init(&bug->read_mutex, SWITCH_MUTEX_NESTED, session->pool);
 	}
 
 	bytes = bug->write_impl.decoded_bytes_per_packet;
-
+//是否创建动态写音频buffer
 	if (switch_test_flag(bug, SMBF_WRITE_STREAM)) {
 		switch_buffer_create_dynamic(&bug->raw_write_buffer, bytes * SWITCH_BUFFER_BLOCK_FRAMES, bytes * SWITCH_BUFFER_START_FRAMES, MAX_BUG_BUFFER);
 		switch_mutex_init(&bug->write_mutex, SWITCH_MUTEX_NESTED, session->pool);
@@ -911,12 +913,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 	if (switch_test_flag(bug, SMBF_READ_VIDEO_STREAM) || switch_test_flag(bug, SMBF_WRITE_VIDEO_STREAM) || switch_test_flag(bug, SMBF_READ_VIDEO_PING) || switch_test_flag(bug, SMBF_WRITE_VIDEO_PING)) {
 		switch_channel_set_flag_recursive(session->channel, CF_VIDEO_DECODED_READ);
 	}
-
+//spy_video_queue视频队列
 	if (switch_test_flag(bug, SMBF_SPY_VIDEO_STREAM) || switch_core_media_bug_test_flag(bug, SMBF_SPY_VIDEO_STREAM_BLEG)) {
 		switch_queue_create(&bug->spy_video_queue[0], SWITCH_CORE_QUEUE_LEN, switch_core_session_get_pool(session));
 		switch_queue_create(&bug->spy_video_queue[1], SWITCH_CORE_QUEUE_LEN, switch_core_session_get_pool(session));
 	}
-
+//文本消息
 	if ((switch_test_flag(bug, SMBF_READ_TEXT_STREAM))) {
 
 		switch_buffer_create_dynamic(&bug->text_buffer, 512, 1024, 0);
@@ -924,7 +926,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 		bug->text_framesize = 1024;
 
 	}
-
+//read_video_queue 和write_video_queue 视频队列
 	if ((switch_test_flag(bug, SMBF_READ_VIDEO_STREAM) || switch_test_flag(bug, SMBF_WRITE_VIDEO_STREAM))) {
 		switch_memory_pool_t *pool = switch_core_session_get_pool(session);
 
@@ -937,9 +939,9 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 		}
 	}
 
-
+//是否有callback
 	if (bug->callback) {
-		switch_bool_t result = bug->callback(bug, bug->user_data, SWITCH_ABC_TYPE_INIT);
+		switch_bool_t result = bug->callback(bug, bug->user_data, SWITCH_ABC_TYPE_INIT);//初始化
 		if (result == SWITCH_FALSE) {
 			switch_core_media_bug_destroy(&bug);
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Error attaching BUG to %s\n",
@@ -949,7 +951,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 	}
 
 	bug->ready = 1;
-
+//是否独立线程处理
 	if ((switch_test_flag(bug, SMBF_READ_VIDEO_STREAM) || switch_test_flag(bug, SMBF_WRITE_VIDEO_STREAM))) {
 		switch_threadattr_t *thd_attr = NULL;
 		switch_memory_pool_t *pool = switch_core_session_get_pool(session);
@@ -966,20 +968,20 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 		session->bugs = bug;
 		added = 1;
 	}
-	
+//加入链表	
 	for(bp = session->bugs; bp; bp = bp->next) {
 		if (bp->ready && !switch_test_flag(bp, SMBF_TAP_NATIVE_READ) && !switch_test_flag(bp, SMBF_TAP_NATIVE_WRITE)) {
 			tap_only = 0;
 		}
 
 		if (!added && !bp->next) {
-			bp->next = bug;
+			bp->next = bug;//加入
 			break;
 		}
 	}
 
 	switch_thread_rwlock_unlock(session->bug_rwlock);
-	*new_bug = bug;
+	*new_bug = bug;//返回值
 
 	if (tap_only) {
 		switch_set_flag(session, SSF_MEDIA_BUG_TAP_ONLY);
@@ -990,14 +992,14 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_bug_add(switch_core_session_t 
 	if (switch_test_flag(bug, SMBF_READ_VIDEO_PATCH) && session->video_read_codec) {
 		switch_set_flag(session->video_read_codec, SWITCH_CODEC_FLAG_VIDEO_PATCHING);
 	}
-	
+//生成SWITCH_EVENT_MEDIA_BUG_START事件	
 	if (switch_event_create(&event, SWITCH_EVENT_MEDIA_BUG_START) == SWITCH_STATUS_SUCCESS) {
 		switch_event_add_header(event, SWITCH_STACK_BOTTOM, "Media-Bug-Function", "%s", bug->function);
 		switch_event_add_header(event, SWITCH_STACK_BOTTOM, "Media-Bug-Target", "%s", bug->target);
 		switch_channel_event_set_data(session->channel, event);
 		switch_event_fire(&event);
 	}
-
+//??
 	switch_core_media_hard_mute(session, SWITCH_FALSE);
 
 	return SWITCH_STATUS_SUCCESS;

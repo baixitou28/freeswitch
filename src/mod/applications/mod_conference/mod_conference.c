@@ -203,7 +203,8 @@ void conference_send_notify(conference_obj_t *conference, const char *status, co
 
 }
 
-
+//TIGER090 重要会议入口
+//这里只判断MFLAG_RUNNING，如果用户断线，这里并不处理
 /* Main monitor thread (1 per distinct conference room) */
 void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *obj)
 {
@@ -243,7 +244,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 	conference->auto_recording = 0;
 	conference->record_count = 0;
 
-	while (conference_globals.running && !conference_utils_test_flag(conference, CFLAG_DESTRUCT)) {
+	while (conference_globals.running && !conference_utils_test_flag(conference, CFLAG_DESTRUCT)) {//不停处理
 		switch_size_t file_sample_len = samples;
 		switch_size_t file_data_len = samples * 2 * conference->channels;
 		int has_file_data = 0, members_with_video = 0, members_with_avatar = 0, members_seeing_video = 0;
@@ -252,16 +253,16 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 		switch_status_t moh_status = SWITCH_STATUS_SUCCESS;
 
 		/* Sync the conference to a single timing source */
-		if (switch_core_timer_next(&timer) != SWITCH_STATUS_SUCCESS) {
+		if (switch_core_timer_next(&timer) != SWITCH_STATUS_SUCCESS) {//TIGER ?
 			conference_utils_set_flag(conference, CFLAG_DESTRUCT);
 			break;
 		}
 
-		switch_mutex_lock(conference->mutex);
+		switch_mutex_lock(conference->mutex);//需要不停的上锁
 		has_file_data = ready = total = 0;
 
 		floor_holder = conference->floor_holder;
-
+		//TIGER ztr?
 		for (imember = conference->members; imember; imember = imember->next) {
 			if (!zstr(imember->text_framedata)) {
 				switch_frame_t frame = { 0 };
@@ -297,17 +298,17 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 				switch_mutex_unlock(imember->text_mutex);
 			}
 		}
-
+		//TIGER 读音频 每个成员读一个frame
 		/* Read one frame of audio from each member channel and save it for redistribution */
 		for (imember = conference->members; imember; imember = imember->next) {
 			uint32_t buf_read = 0;
 			total++;
 			imember->read = 0;
 
-			if (conference_utils_member_test_flag(imember, MFLAG_RUNNING) && imember->session) {
+			if (conference_utils_member_test_flag(imember, MFLAG_RUNNING) && imember->session) {//如果是running
 				switch_channel_t *channel = switch_core_session_get_channel(imember->session);
 				switch_media_flow_t video_media_flow;
-				
+				//
 				if ((!floor_holder || (imember->id != conference->floor_holder && imember->score_iir > SCORE_IIR_SPEAKING_MAX && (conference->floor_holder_score_iir < SCORE_IIR_SPEAKING_MIN)))) {// &&
 					//(!conference_utils_test_flag(conference, CFLAG_VID_FLOOR) || switch_channel_test_flag(channel, CF_VIDEO))) {
 
@@ -317,7 +318,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 						floor_holder = conference->floor_holder;
 					}
 				}
-
+				//视频
 				video_media_flow = switch_core_session_media_flow(imember->session, SWITCH_MEDIA_TYPE_VIDEO);
 
 				if (video_media_flow != imember->video_media_flow) {
@@ -365,28 +366,28 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 
 			conference_utils_member_clear_flag_locked(imember, MFLAG_HAS_AUDIO);
 			switch_mutex_lock(imember->audio_in_mutex);
-
-			if (switch_buffer_inuse(imember->audio_buffer) >= bytes
-				&& (buf_read = (uint32_t) switch_buffer_read(imember->audio_buffer, imember->frame, bytes))) {
+			//tiger090 重要：读语音
+			if (switch_buffer_inuse(imember->audio_buffer) >= bytes//TIGER
+				&& (buf_read = (uint32_t) switch_buffer_read(imember->audio_buffer, imember->frame, bytes))) {//TIGER 读数据从imember->frame到imember->audio_buffer
 				imember->read = buf_read;
 				conference_utils_member_set_flag_locked(imember, MFLAG_HAS_AUDIO);
 				ready++;
 			}
 			switch_mutex_unlock(imember->audio_in_mutex);
 		}
-
+		//设置会议参数
 		conference->members_with_video = members_with_video;
 		conference->members_seeing_video = members_seeing_video;
 		conference->members_with_avatar = members_with_avatar;
-
+		//重新设置主席
 		if (floor_holder != conference->floor_holder) {
 			conference_member_set_floor_holder(conference, NULL, floor_holder);
 		}
-
+		//不是听背景音乐
 		if (conference_utils_test_flag(conference, CFLAG_NO_MOH)) {
 			nomoh++;
 		}
-		
+		//背景音乐
 		if (conference->moh_wait > 0) {
 			conference->moh_wait--;
 		} else {
@@ -408,7 +409,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 		if (!conference->moh_wait && moh_status != SWITCH_STATUS_SUCCESS) {
 			conference->moh_wait = 2000 / conference->interval;
 		}
-
+		//如果没人说话，准备退出
 		/* Find if no one talked for more than x number of second */
 		if (conference->terminate_on_silence && conference->count > 1) {
 			int is_talking = 0;
@@ -425,7 +426,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 				conference_utils_set_flag(conference, CFLAG_DESTRUCT);
 			}
 		}
-
+		//tiger 自动录制
 		/* Start auto recording if there's the minimum number of required participants. */
 		if (conference->auto_record && !conference->auto_recording && (conference->count >= conference->min_recording_participants)) {
 			conference->auto_recording++;
@@ -565,7 +566,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 			}
 		}
 		switch_mutex_unlock(conference->file_mutex);
-
+		//TIGER090 关键的分发数据代码
 		if (ready || has_file_data) {
 			/* Use more bits in the main_frame to preserve the exact sum of the audio samples. */
 			int main_frame[SWITCH_RECOMMENDED_BUFFER_SIZE] = { 0 };
@@ -575,7 +576,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 			/* Init the main frame with file data if there is any. */
 			bptr = (int16_t *) file_frame;
 			if (has_file_data && file_sample_len) {
-
+				//TIGER 
 				for (x = 0; x < bytes / 2; x++) {
 					if (x <= file_sample_len * conference->channels) {
 						main_frame[x] = (int32_t) bptr[x];
@@ -584,14 +585,14 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 					}
 				}
 			}
-
+			//计数器
 			conference->mux_loop_count = 0;
-			conference->member_loop_count = 0;
+			conference->member_loop_count = 0;//多少个会议成员
 
-
+			//合成
 			/* Copy audio from every member known to be producing audio into the main frame. */
 			for (omember = conference->members; omember; omember = omember->next) {
-				conference->member_loop_count++;
+				conference->member_loop_count++;//多少个会议成员
 
 				if (!(conference_utils_member_test_flag(omember, MFLAG_RUNNING) && conference_utils_member_test_flag(omember, MFLAG_HAS_AUDIO))) {
 					continue;
@@ -599,7 +600,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 
 				bptr = (int16_t *) omember->frame;
 				for (x = 0; x < omember->read / 2; x++) {
-					main_frame[x] += (int32_t) bptr[x];
+					main_frame[x] += (int32_t) bptr[x];//简单叠加
 				}
 			}
 
@@ -611,11 +612,11 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 			for (omember = conference->members; omember; omember = omember->next) {
 				switch_size_t ok = 1;
 
-				if (!conference_utils_member_test_flag(omember, MFLAG_RUNNING)) {
+				if (!conference_utils_member_test_flag(omember, MFLAG_RUNNING)) {//是否还在运行
 					continue;
 				}
 
-				if (!conference_utils_member_test_flag(omember, MFLAG_CAN_HEAR)) {
+				if (!conference_utils_member_test_flag(omember, MFLAG_CAN_HEAR)) {//是否可听
 					switch_mutex_lock(omember->audio_out_mutex);
 					memset(write_frame, 255, bytes);
 					ok = switch_buffer_write(omember->mux_buffer, write_frame, bytes);
@@ -625,14 +626,14 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 
 				bptr = (int16_t *) omember->frame;
 
-				for (x = 0; x < bytes / 2 ; x++) {
+				for (x = 0; x < bytes / 2 ; x++) {//tiger 从这里看，效率好像是不太高
 					z = main_frame[x];
 
 					/* bptr[x] represents my own contribution to this audio sample */
 					if (conference_utils_member_test_flag(omember, MFLAG_HAS_AUDIO) && x <= omember->read / 2) {
-						z -= (int32_t) bptr[x];
+						z -= (int32_t) bptr[x];//减去自己的声音
 					}
-
+					//tiger 不知道何为relation??
 					/* when there are relationships, we have to do more work by scouring all the members to see if there are any
 					   reasons why we should not be hearing a paticular member, and if not, delete their samples as well.
 					*/
@@ -663,10 +664,10 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 					}
 
 					/* Now we can convert to 16 bit. */
-					switch_normalize_to_16bit(z);
-					write_frame[x] = (int16_t) z;
+					switch_normalize_to_16bit(z);//大于16bit，取最大值，否则取低16位
+					write_frame[x] = (int16_t) z;//1位算好了
 				}
-
+				//真正的写
 				switch_mutex_lock(omember->audio_out_mutex);
 				ok = switch_buffer_write(omember->mux_buffer, write_frame, bytes);
 				switch_mutex_unlock(omember->audio_out_mutex);
@@ -682,10 +683,10 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 			if (conference->comfort_noise_level) {
 				switch_generate_sln_silence(write_frame, samples, conference->channels, conference->comfort_noise_level * (conference->rate / 8000));
 			} else {
-				memset(write_frame, 255, bytes);
+				memset(write_frame, 255, bytes);//没有声音，搞点空数据
 			}
 
-			for (omember = conference->members; omember; omember = omember->next) {
+			for (omember = conference->members; omember; omember = omember->next) {//每个用户都写静音数据
 				switch_size_t ok = 1;
 
 				if (!conference_utils_member_test_flag(omember, MFLAG_RUNNING)) {
@@ -693,7 +694,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 				}
 
 				switch_mutex_lock(omember->audio_out_mutex);
-				ok = switch_buffer_write(omember->mux_buffer, write_frame, bytes);
+				ok = switch_buffer_write(omember->mux_buffer, write_frame, bytes);//写
 				switch_mutex_unlock(omember->audio_out_mutex);
 
 				if (!ok) {
@@ -702,7 +703,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 				}
 			}
 		}
-
+		//
 		if (conference->async_fnode && conference->async_fnode->done) {
 			switch_memory_pool_t *pool;
 
@@ -717,7 +718,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 			switch_core_destroy_memory_pool(&pool);
 			switch_mutex_unlock(conference->file_mutex);
 		}
-
+		//
 		if (conference->fnode && conference->fnode->done) {
 			conference_file_node_t *fnode;
 			switch_memory_pool_t *pool;
@@ -745,7 +746,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 			switch_core_destroy_memory_pool(&pool);
 			switch_mutex_unlock(conference->file_mutex);
 		}
-
+		//
 		if (!conference->end_count && conference->endconference_time &&
 			switch_epoch_time_now(NULL) - conference->endconference_time > conference->endconference_grace_time) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Conference %s: endconf grace time exceeded (%u)\n",
@@ -762,7 +763,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 	if (conference_utils_test_flag(conference, CFLAG_OUTCALL)) {
 		conference->cancel_cause = SWITCH_CAUSE_ORIGINATOR_CANCEL;
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Ending pending outcall channels for Conference: '%s'\n", conference->name);
-		while(conference->originating) {
+		while(conference->originating) {//不怕死循环?
 			switch_yield(200000);
 		}
 	}
@@ -774,7 +775,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 	conference_file_stop(conference, FILE_STOP_ALL);
 
 	switch_mutex_lock(conference->member_mutex);
-	for (imember = conference->members; imember; imember = imember->next) {
+	for (imember = conference->members; imember; imember = imember->next) {//向每个成员发送bye
 		switch_channel_t *channel;
 
 		if (!conference_utils_member_test_flag(imember, MFLAG_NOCHANNEL)) {
@@ -787,7 +788,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 					switch_channel_hangup(channel, SWITCH_CAUSE_NORMAL_CLEARING);
 				} else {
 					/* put actual cause code from outbound channel hangup here */
-					switch_channel_hangup(channel, conference->bridge_hangup_cause);
+					switch_channel_hangup(channel, conference->bridge_hangup_cause);//发送bye
 				}
 			}
 		}
@@ -1437,8 +1438,8 @@ void conference_fnode_toggle_pause(conference_file_node_t *fnode, switch_stream_
 {
 	if (fnode) {
 		switch_core_file_command(&fnode->fh, SCFC_PAUSE_READ);
-		if (switch_test_flag(fnode, NFLAG_PAUSE)) {
-			stream->write_function(stream, "+OK Resume\n");
+		if (switch_test_flag(fnode, NFLAG_PAUSE)) {//设置一下状态
+			stream->write_function(stream, "+OK Resume\n");//写状态
 			switch_clear_flag(fnode, NFLAG_PAUSE);
 		} else {
 			stream->write_function(stream, "+OK Pause\n");
@@ -1488,7 +1489,7 @@ void conference_fnode_seek(conference_file_node_t *fnode, switch_stream_handle_t
 	}
 }
 
-
+//会议发起一个呼叫
 /* generate an outbound call from the conference */
 switch_status_t conference_outcall(conference_obj_t *conference,
 								   char *conference_name,
@@ -1561,7 +1562,7 @@ switch_status_t conference_outcall(conference_obj_t *conference,
 		conference_send_notify(conference, "SIP/2.0 100 Trying\r\n", call_id, SWITCH_FALSE);
 	}
 
-
+	//TIGER originate 一个呼叫
 	status = switch_ivr_originate(session, &peer_session, cause, bridgeto, timeout, NULL, cid_name, cid_num, NULL, var_event, SOF_NO_LIMITS, cancel_cause, NULL);
 	switch_mutex_lock(conference->mutex);
 	conference->originating--;
@@ -1597,7 +1598,7 @@ switch_status_t conference_outcall(conference_obj_t *conference,
 		switch_channel_hangup(peer_channel, SWITCH_CAUSE_NO_ROUTE_DESTINATION);
 		goto done;
 	}
-
+	//TIGER 为什么要写这个
 	if (caller_channel && switch_channel_test_flag(peer_channel, CF_ANSWERED)) {
 		switch_channel_answer(caller_channel);
 	}
@@ -1625,7 +1626,7 @@ switch_status_t conference_outcall(conference_obj_t *conference,
 			have_flags = SWITCH_TRUE;
 		}
 		/* add them to the conference */
-
+		//tiger 这个是哪个appdata？
 		switch_snprintf(appdata, sizeof(appdata), "%s%s%s%s%s%s", conference_name,
 						profile?"@":"", profile?profile:"",
 						have_flags?"+flags{":"", have_flags?flags:"", have_flags?"}":"");
@@ -1650,7 +1651,7 @@ switch_status_t conference_outcall(conference_obj_t *conference,
 
 	return status;
 }
-
+//后台起个线程运行
 void *SWITCH_THREAD_FUNC conference_outcall_run(switch_thread_t *thread, void *obj)
 {
 	struct bg_call *call = (struct bg_call *) obj;
@@ -1663,7 +1664,7 @@ void *SWITCH_THREAD_FUNC conference_outcall_run(switch_thread_t *thread, void *o
 		conference_outcall(call->conference, call->conference_name,
 						   call->session, call->bridgeto, call->timeout,
 						   call->flags, call->cid_name, call->cid_num, call->profile, &cause, call->cancel_cause, call->var_event);
-
+		//发送dail状态
 		if (call->conference && test_eflag(call->conference, EFLAG_BGDIAL_RESULT) &&
 			switch_event_create_subclass(&event, SWITCH_EVENT_CUSTOM, CONF_EVENT_MAINT) == SWITCH_STATUS_SUCCESS) {
 			conference_event_add_data(call->conference, event);
@@ -1672,7 +1673,7 @@ void *SWITCH_THREAD_FUNC conference_outcall_run(switch_thread_t *thread, void *o
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Job-UUID", call->uuid);
 			switch_event_fire(&event);
 		}
-
+		//释放
 		if (call->var_event) {
 			switch_event_destroy(&call->var_event);
 		}
@@ -1705,7 +1706,7 @@ switch_status_t conference_outcall_bg(conference_obj_t *conference,
 
 	if (!(call = malloc(sizeof(*call))))
 		return SWITCH_STATUS_MEMERR;
-
+	//TIGER 将呼叫存放在call上
 	memset(call, 0, sizeof(*call));
 	call->conference = conference;
 	call->session = session;
@@ -1748,7 +1749,7 @@ switch_status_t conference_outcall_bg(conference_obj_t *conference,
 	if (profile) {
 		call->profile = strdup(profile);
 	}
-
+	//启动线程
 	switch_threadattr_create(&thd_attr, pool);
 	switch_threadattr_detach_set(thd_attr, 1);
 	switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);
@@ -2363,7 +2364,7 @@ SWITCH_STANDARD_APP(conference_function)
 	switch_mutex_init(&member.audio_out_mutex, SWITCH_MUTEX_NESTED, member.pool);
 	switch_mutex_init(&member.text_mutex, SWITCH_MUTEX_NESTED, member.pool);
 	switch_thread_rwlock_create(&member.rwlock, member.pool);
-
+	//TIGER 初始化输入出的转码
 	if (conference_member_setup_media(&member, conference)) {
 		//flags = 0;
 		goto done;
@@ -2447,13 +2448,13 @@ SWITCH_STANDARD_APP(conference_function)
 			switch_yield(100000);
 		}
 	} else {
-
+		//TIGER 会议重要入口
 		/* Run the conference loop */
 		do {
 			conference_loop_output(&member);
-		} while (member.loop_loop);
+		} while (member.loop_loop);//是否可以再次loop
 	}
-
+	//准备退出
 	switch_core_session_video_reset(session);
 	switch_channel_clear_flag_recursive(channel, CF_VIDEO_DECODED_READ);
 
@@ -2488,7 +2489,7 @@ SWITCH_STANDARD_APP(conference_function)
 	}
 
 	/* Remove the caller from the conference */
-	conference_member_del(member.conference, &member);
+	conference_member_del(member.conference, &member);//退出会议
 
 	/* Put the original codec back */
 	switch_core_session_set_read_codec(member.session, NULL);

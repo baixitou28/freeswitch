@@ -68,7 +68,7 @@ struct switch_loadable_module {
 	switch_thread_t *thread;
 	switch_bool_t shutting_down;
 };
-
+//tiger 相关结构
 struct switch_loadable_module_container {
 	switch_hash_t *module_hash;
 	switch_hash_t *endpoint_hash;
@@ -91,7 +91,7 @@ struct switch_loadable_module_container {
 	switch_mutex_t *mutex;
 	switch_memory_pool_t *pool;
 };
-
+//tiger 全局变量loadable_modules
 static struct switch_loadable_module_container loadable_modules;
 static switch_status_t do_shutdown(switch_loadable_module_t *module, switch_bool_t shutdown, switch_bool_t unload, switch_bool_t fail_if_busy,
 								   const char **err);
@@ -153,27 +153,28 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 	switch_mutex_lock(loadable_modules.mutex);
 	switch_core_hash_insert(loadable_modules.module_hash, key, new_module);
 
-	if (new_module->module_interface->endpoint_interface) {
+	if (new_module->module_interface->endpoint_interface) {//TIGER 端
 		const switch_endpoint_interface_t *ptr;
 		for (ptr = new_module->module_interface->endpoint_interface; ptr; ptr = ptr->next) {
 			if (!ptr->interface_name) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "Failed to load endpoint interface from %s due to no interface name.\n", key);
 			} else {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_NOTICE, "Adding Endpoint '%s'\n", ptr->interface_name);
+				//tiger 加入模块
 				switch_core_hash_insert(loadable_modules.endpoint_hash, ptr->interface_name, (const void *) ptr);
 				if (switch_event_create(&event, SWITCH_EVENT_MODULE_LOAD) == SWITCH_STATUS_SUCCESS) {
 					switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "type", "endpoint");
 					switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "name", ptr->interface_name);
 					switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "key", new_module->key);
 					switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "filename", new_module->filename);
-					switch_event_fire(&event);
+					switch_event_fire(&event);//TIGER 生成事件
 					added++;
 				}
 			}
 		}
 	}
 
-	if (new_module->module_interface->codec_interface) {
+	if (new_module->module_interface->codec_interface) {//编解码
 		const switch_codec_implementation_t *impl;
 		const switch_codec_interface_t *ptr;
 
@@ -261,7 +262,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->timer_interface) {
+	if (new_module->module_interface->timer_interface) {//时钟
 		const switch_timer_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->timer_interface; ptr; ptr = ptr->next) {
@@ -282,7 +283,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->application_interface) {
+	if (new_module->module_interface->application_interface) {//应用
 		const switch_application_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->application_interface; ptr; ptr = ptr->next) {
@@ -305,7 +306,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->chat_application_interface) {
+	if (new_module->module_interface->chat_application_interface) {//聊天应用
 		const switch_chat_application_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->chat_application_interface; ptr; ptr = ptr->next) {
@@ -328,7 +329,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->api_interface) {
+	if (new_module->module_interface->api_interface) {//API
 		const switch_api_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->api_interface; ptr; ptr = ptr->next) {
@@ -351,7 +352,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->json_api_interface) {
+	if (new_module->module_interface->json_api_interface) {//JSON_API
 		const switch_json_api_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->json_api_interface; ptr; ptr = ptr->next) {
@@ -374,7 +375,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->file_interface) {
+	if (new_module->module_interface->file_interface) {//文件
 		const switch_file_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->file_interface; ptr; ptr = ptr->next) {
@@ -410,7 +411,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->speech_interface) {
+	if (new_module->module_interface->speech_interface) {//SPEECH
 		const switch_speech_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->speech_interface; ptr; ptr = ptr->next) {
@@ -431,7 +432,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->asr_interface) {
+	if (new_module->module_interface->asr_interface) {//ASR
 		const switch_asr_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->asr_interface; ptr; ptr = ptr->next) {
@@ -452,7 +453,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->directory_interface) {
+	if (new_module->module_interface->directory_interface) {//用户
 		const switch_directory_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->directory_interface; ptr; ptr = ptr->next) {
@@ -473,7 +474,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->chat_interface) {
+	if (new_module->module_interface->chat_interface) {//聊天
 		const switch_chat_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->chat_interface; ptr; ptr = ptr->next) {
@@ -494,7 +495,7 @@ static switch_status_t switch_loadable_module_process(char *key, switch_loadable
 		}
 	}
 
-	if (new_module->module_interface->say_interface) {
+	if (new_module->module_interface->say_interface) {//语音
 		const switch_say_interface_t *ptr;
 
 		for (ptr = new_module->module_interface->say_interface; ptr; ptr = ptr->next) {
@@ -1399,7 +1400,7 @@ static switch_status_t switch_loadable_module_unprocess(switch_loadable_module_t
 
 }
 
-
+//tiger 重要入口 根据文件名加载
 static switch_status_t switch_loadable_module_load_file(char *path, char *filename, switch_bool_t global, switch_loadable_module_t **new_module)
 {
 	switch_loadable_module_t *module = NULL;
@@ -1432,6 +1433,7 @@ static switch_status_t switch_loadable_module_load_file(char *path, char *filena
 		switch_safe_free(lib_path);
 	}
 #else
+	//TIGER 打开动态链接库
 	dso = switch_dso_open(NULL, load_global, &derr);
 #endif
 	if (!derr && dso) {
@@ -1523,7 +1525,7 @@ static switch_status_t switch_loadable_module_load_file(char *path, char *filena
 		switch_safe_free(derr);
 		return SWITCH_STATUS_GENERR;
 	}
-
+//tiger 加载动态链接库
 	module->pool = pool;
 	module->filename = switch_core_strdup(module->pool, path);
 	module->module_interface = module_interface;
@@ -1548,7 +1550,7 @@ SWITCH_DECLARE(switch_status_t) switch_loadable_module_load_module(char *dir, ch
 {
 	return switch_loadable_module_load_module_ex(dir, fname, runtime, SWITCH_FALSE, err);
 }
-
+//tiger 围绕loadable_modules 全局变量
 static switch_status_t switch_loadable_module_load_module_ex(char *dir, char *fname, switch_bool_t runtime, switch_bool_t global, const char **err)
 {
 	switch_size_t len = 0;
@@ -1819,7 +1821,7 @@ static void switch_loadable_module_path_init()
 	}
 }
 #endif
-
+//tiger 模块加载 重要初始化入口
 SWITCH_DECLARE(switch_status_t) switch_loadable_module_init(switch_bool_t autoload)
 {
 
@@ -1833,7 +1835,7 @@ SWITCH_DECLARE(switch_status_t) switch_loadable_module_init(switch_bool_t autolo
 	unsigned int count = 0;
 	const char *err;
 
-
+//选择不同的类型
 #ifdef WIN32
 	const char *ext = ".dll";
 	const char *EXT = ".DLL";
@@ -1852,7 +1854,7 @@ SWITCH_DECLARE(switch_status_t) switch_loadable_module_init(switch_bool_t autolo
 #ifdef WIN32
 	switch_loadable_module_path_init();
 #endif
-
+//tiger hash
 	switch_core_hash_init(&loadable_modules.module_hash);
 	switch_core_hash_init_nocase(&loadable_modules.endpoint_hash);
 	switch_core_hash_init_nocase(&loadable_modules.codec_hash);
@@ -1883,7 +1885,7 @@ SWITCH_DECLARE(switch_status_t) switch_loadable_module_init(switch_bool_t autolo
 	switch_loadable_module_load_module("", "CORE_VPX_MODULE", SWITCH_FALSE, &err);
 #endif
 #endif
-
+//tiger 加载modules 在modules.conf 中定义
 	if ((xml = switch_xml_open_cfg(cf, &cfg, NULL))) {
 		switch_xml_t mods, ld;
 		if ((mods = switch_xml_child(cfg, "modules"))) {
@@ -1902,6 +1904,7 @@ SWITCH_DECLARE(switch_status_t) switch_loadable_module_init(switch_bool_t autolo
 				if (path && zstr(path)) {
 					path = SWITCH_GLOBAL_dirs.mod_dir;
 				}
+				//TIGER 入口
 				if (switch_loadable_module_load_module_ex((char *) path, (char *) val, SWITCH_FALSE, global, &err) == SWITCH_STATUS_GENERR) {
 					if (critical && switch_true(critical)) {
 						switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "Failed to load critical module '%s', abort()\n", val);
@@ -1916,7 +1919,7 @@ SWITCH_DECLARE(switch_status_t) switch_loadable_module_init(switch_bool_t autolo
 	} else {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CONSOLE, "open of %s failed\n", cf);
 	}
-
+//tiger 迟加载post_load_modules.conf 中定义
 	if ((xml = switch_xml_open_cfg(pcf, &cfg, NULL))) {
 		switch_xml_t mods, ld;
 
@@ -2528,7 +2531,7 @@ SWITCH_DECLARE(int) switch_loadable_module_get_codecs_sorted(const switch_codec_
 
 	return i;
 }
-
+//TIGER API
 SWITCH_DECLARE(switch_status_t) switch_api_execute(const char *cmd, const char *arg, switch_core_session_t *session, switch_stream_handle_t *stream)
 {
 	switch_api_interface_t *api;
@@ -2564,6 +2567,7 @@ SWITCH_DECLARE(switch_status_t) switch_api_execute(const char *cmd, const char *
 
 
 	if (cmd_used && (api = switch_loadable_module_get_api_interface(cmd_used)) != 0) {
+//tiger api 实际执行api命令		
 		if ((status = api->function(arg_used, session, stream)) != SWITCH_STATUS_SUCCESS) {
 			stream->write_function(stream, "COMMAND RETURNED ERROR!\n");
 		}
@@ -2655,10 +2659,10 @@ SWITCH_DECLARE(switch_loadable_module_interface_t *) switch_loadable_module_crea
 		}																\
 		switch_thread_rwlock_create(&i->rwlock, mod->pool);				\
 		switch_mutex_init(&i->reflock, SWITCH_MUTEX_NESTED, mod->pool);	\
-		i->parent = mod;												\
+		i->parent = mod;												\//tiger 链表实现
 		return i; }
 
-
+//TIGER module 加入链表
 SWITCH_DECLARE(void *) switch_loadable_module_create_interface(switch_loadable_module_interface_t *mod, switch_module_interface_name_t iname)
 {
 
@@ -2687,7 +2691,7 @@ SWITCH_DECLARE(void *) switch_loadable_module_create_interface(switch_loadable_m
 	case SWITCH_JSON_API_INTERFACE:
 		ALLOC_INTERFACE(json_api)
 
-	case SWITCH_FILE_INTERFACE:
+	case SWITCH_FILE_INTERFACE://tiger 加入file相关的链表
 		ALLOC_INTERFACE(file)
 
 	case SWITCH_SPEECH_INTERFACE:

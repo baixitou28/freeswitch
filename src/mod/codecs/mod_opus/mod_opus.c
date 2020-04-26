@@ -614,6 +614,7 @@ static switch_status_t switch_opus_init(switch_codec_t *codec, switch_codec_flag
 			opus_encoder_ctl(context->encoder_object, OPUS_SET_BANDWIDTH(OPUS_AUTO));
 			opus_encoder_ctl(context->encoder_object, OPUS_SET_BITRATE(bitrate_bps)); /* OPUS_AUTO */
 			opus_encoder_ctl(context->encoder_object, OPUS_GET_BITRATE(&bitrate_bps)); /* return average bps for this audio bandwidth */
+//tiger 日志初始化bitrate:			
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Opus encoder: set bitrate to local settings [%dbps]\n", bitrate_bps);
 		}
 		/* Another fmtp setting from https://tools.ietf.org/html/rfc7587 - "RTP Payload Format for the Opus Speech and Audio Codec" */

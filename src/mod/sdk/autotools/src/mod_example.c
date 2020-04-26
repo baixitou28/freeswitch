@@ -36,9 +36,9 @@
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_example_shutdown);
 SWITCH_MODULE_RUNTIME_FUNCTION(mod_example_runtime);
 */
-
+//tiger 模块示例
 SWITCH_MODULE_LOAD_FUNCTION(mod_example_load);
-SWITCH_MODULE_DEFINITION(mod_example, mod_example_load, NULL, NULL);
+SWITCH_MODULE_DEFINITION(mod_example, mod_example_load, NULL, NULL);//这里可以把mod_example_shutdown 加上
 
 SWITCH_MODULE_LOAD_FUNCTION(mod_example_load)
 {

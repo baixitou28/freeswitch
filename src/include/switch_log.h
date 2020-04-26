@@ -76,7 +76,7 @@ typedef switch_status_t (*switch_log_function_t) (const switch_log_node_t *node,
   \note to be called at application startup by the core
 */
 SWITCH_DECLARE(switch_status_t) switch_log_init(_In_ switch_memory_pool_t *pool, _In_ switch_bool_t colorize);
-
+//TIGER switch_log_  ÈÕÖ¾º¯Êý
 /*!
   \brief Shut down the logging engine
   \note to be called at application termination by the core

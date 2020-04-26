@@ -738,7 +738,7 @@ static void jsock_send_event(cJSON *event)
 		use_jsock = NULL;
 	}
 }
-
+//TIGER JRPC查找
 static jrpc_func_t jrpc_get_func(jsock_t *jsock, const char *method)
 {
 	jrpc_func_t func = NULL;
@@ -750,7 +750,7 @@ static jrpc_func_t jrpc_get_func(jsock_t *jsock, const char *method)
 		if (strchr(method, '.')) {
 			char *p;
 			main_method = strdup(method);
-			if ((p = strchr(main_method, '.'))) {
+			if ((p = strchr(main_method, '.'))) {//tiger verto.invite 只需要查verto
 				*p = '\0';
 			}
 		}
@@ -771,7 +771,7 @@ static jrpc_func_t jrpc_get_func(jsock_t *jsock, const char *method)
 	return func;
 }
 
-
+//增加
 static void jrpc_add_func(const char *method, jrpc_func_t func)
 {
 	switch_assert(method);
@@ -835,7 +835,7 @@ static void check_permissions(jsock_t *jsock, switch_xml_t x_user, cJSON *params
 			if (zstr(val) || zstr(var)) {
 				continue;
 			}
-
+//TIGER JSON 
 			if (!strcasecmp(var, "jsonrpc-allowed-methods")) {
 				allowed_methods = val;
 			}
@@ -1052,6 +1052,7 @@ static switch_bool_t check_auth(jsock_t *jsock, cJSON *params, int *code, char *
 				jsock->uid = NULL;
 				login_fire_custom_event(jsock, params, 0, "Authentication Failure");
 			} else {
+			//tiger 提示auth using username password
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,"auth using %s\n",a1_hash ? "a1-hash" : "username & password");
 				r = SWITCH_TRUE;
 				check_permissions(jsock, x_user, params);
@@ -1312,7 +1313,7 @@ static void set_session_id(jsock_t *jsock, const char *uuid)
 	attach_jsock(jsock);
 
 }
-
+//tiger jrpc
 static cJSON *process_jrpc(jsock_t *jsock, cJSON *json)
 {
 	cJSON *reply = NULL, *echo = NULL, *id = NULL, *params = NULL, *response = NULL, *result;
@@ -1353,16 +1354,16 @@ static cJSON *process_jrpc(jsock_t *jsock, cJSON *json)
 	if (!switch_test_flag(jsock, JPFLAG_AUTHED) && (jsock->profile->userauth || jsock->profile->root_passwd)) {
 		int code = CODE_AUTH_REQUIRED;
 		char message[128] = "Authentication Required";
-
+//鉴权
 		if (!check_auth(jsock, params, &code, message, sizeof(message))) {
 			jrpc_add_error(reply, code, message, id);
 			goto end;
 		}
 		switch_set_flag(jsock, JPFLAG_AUTHED);
 	}
-
+//寻找jrpc函数
 	if (!method || !(func = jrpc_get_func(jsock, method))) {
-		jrpc_add_error(reply, -32601, "Invalid Method, Missing Method or Permission Denied", id);
+		jrpc_add_error(reply, -32601, "Invalid Method, Missing Method or Permission Denied", id);//TIGER 提示找不到
 	} else {
 		if (func(method, params, jsock, &response) == SWITCH_TRUE) {
 
@@ -1391,7 +1392,7 @@ static cJSON *process_jrpc(jsock_t *jsock, cJSON *json)
 
 	return reply;
 }
-
+//tiger 
 static switch_status_t process_input(jsock_t *jsock, uint8_t *data, switch_ssize_t bytes)
 {
 	cJSON *json = NULL, *reply = NULL;
@@ -1670,7 +1671,7 @@ new_req:
 	}
 
 	// switch_http_dump_request(&request);
-
+//01. tiger write_function
 	stream.data = &request;
 	stream.read_function = http_stream_read;
 	stream.write_function = http_stream_write;
@@ -1728,7 +1729,7 @@ new_req:
 
 		cJSON_AddItemToObject(params, "login", cJSON_CreateString(auth_user));
 		cJSON_AddItemToObject(params, "passwd", cJSON_CreateString(auth_pass));
-
+//02.  tiger
 		if (!check_auth(jsock, params, &code, message, sizeof(message))) {
 			switch_snprintf(auth_buffer, sizeof(auth_buffer),
 				"HTTP/1.1 401 Authentication Required\r\n"
@@ -1755,7 +1756,7 @@ authed:
 
 		while(rule) {
 			char *expression = rule->name;
-
+//03. tiger
 			if ((proceed = switch_regex_perform(request.uri, expression, &re, ovector, sizeof(ovector) / sizeof(ovector[0])))) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG,
 								  "%d request [%s] matched expr [%s]\n", proceed, request.uri, expression);
@@ -1866,6 +1867,7 @@ static void client_run(jsock_t *jsock)
 	}
 
 	while(jsock->profile->running) {
+		//等待事件
 		int pflags = switch_wait_sock(jsock->client_socket, 50, SWITCH_POLL_READ | SWITCH_POLL_ERROR | SWITCH_POLL_HUP);
 
 		if (jsock->drop) { die("%s Dropping Connection\n", jsock->name); }
@@ -1873,6 +1875,7 @@ static void client_run(jsock_t *jsock)
 		if (pflags & SWITCH_POLL_HUP) { die("%s POLL HANGUP DETECTED (peer closed its end of socket)\n", jsock->name); }
 		if (pflags & SWITCH_POLL_ERROR) { die("%s POLL ERROR\n", jsock->name); }
 		if (pflags & SWITCH_POLL_INVALID) { die("%s POLL INVALID SOCKET (not opened or already closed)\n", jsock->name); }
+		//读取数据
 		if (pflags & SWITCH_POLL_READ) {
 			switch_ssize_t bytes;
 			ws_opcode_t oc;
@@ -1894,7 +1897,7 @@ static void client_run(jsock_t *jsock)
 				if (*s == '#') {
 					char repl[2048] = "";
 					switch_time_t a, b;
-
+//自定义命令SPU :speed test
 					if (s[1] == 'S' && s[2] == 'P') {
 
 						if (s[3] == 'U') {
@@ -1952,7 +1955,7 @@ static void client_run(jsock_t *jsock)
 				}
 
 			nm:
-
+//tiger 处理jrpc命令
 				if (process_input(jsock, data, bytes) != SWITCH_STATUS_SUCCESS) {
 					die("%s Input Error\n", jsock->name);
 				}
@@ -2045,7 +2048,7 @@ static void *SWITCH_THREAD_FUNC client_thread(switch_thread_t *thread, void *obj
 static switch_bool_t auth_api_command(jsock_t *jsock, const char *api_cmd, const char *arg)
 {
 	const char *check_cmd = api_cmd;
-	char *sneaky_commands[] = { "bgapi", "sched_api", "eval", "expand", "xml_wrap", NULL };
+	char *sneaky_commands[] = { "bgapi", "sched_api", "eval", "expand", "xml_wrap", NULL };//bgapi 这个是后台命令，要跳过
 	int x = 0;
 	char *dup_arg = NULL;
 	char *next = NULL;
@@ -2058,30 +2061,30 @@ static switch_bool_t auth_api_command(jsock_t *jsock, const char *api_cmd, const
 		goto end;
 	}
 
-	if (!switch_event_get_header(jsock->allowed_fsapi, check_cmd)) {
+	if (!switch_event_get_header(jsock->allowed_fsapi, check_cmd)) {//取出事件
 		ok = SWITCH_FALSE;
 		goto end;
 	}
 
 	while (check_cmd) {
-		for (x = 0; sneaky_commands[x]; x++) {
+		for (x = 0; sneaky_commands[x]; x++) {//如果是bgapi , 则跳过bgapi ，用后面的命令
 			if (!strcasecmp(sneaky_commands[x], check_cmd)) {
 				if (check_cmd == api_cmd) {
-					if (arg) {
+					if (arg) {//有参数，则从参数中，选前面的为cmd的
 						switch_safe_free(dup_arg);
 						dup_arg = strdup(arg);
 						check_cmd = dup_arg;
-						if ((next = strchr(check_cmd, ' '))) {
+						if ((next = strchr(check_cmd, ' '))) {//check_cmd 的args中下一参数作为命令
 							*next++ = '\0';
 						}
 					} else {
-						break;
+						break;//没有args，不用找了
 					}
 				} else {
 					if (next) {
 						check_cmd = next;
 					} else {
-						check_cmd = dup_arg;
+						check_cmd = dup_arg;//没有next还是采用最后的那个命令吧
 					}
 
 					if ((next = strchr(check_cmd, ' '))) {
@@ -3840,7 +3843,7 @@ static switch_bool_t event_channel_check_auth(jsock_t *jsock, const char *event_
 		if (strchr(event_channel, '.')) {
 			char *p;
 			main_event_channel = strdup(event_channel);
-			if ((p = strchr(main_event_channel, '.'))) {
+			if ((p = strchr(main_event_channel, '.'))) {//TIGER 为了查询   FSevent.xxxx类型?
 				*p = '\0';
 			}
 		}

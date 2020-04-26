@@ -211,7 +211,7 @@ static switch_status_t sofia_on_execute(switch_core_session_t *session)
 
 	return SWITCH_STATUS_SUCCESS;
 }
-
+//生成Remote-Party-ID字符串
 char *generate_pai_str(private_object_t *tech_pvt)
 {
 	switch_core_session_t *session = tech_pvt->session;
@@ -253,10 +253,10 @@ char *generate_pai_str(private_object_t *tech_pvt)
 	if (!zstr(callee_number) && (zstr(ua) || !switch_stristr("polycom", ua))) {
 		callee_number = switch_core_session_sprintf(session, "sip:%s@%s", callee_number, host);
 	}
-
+	//使用Remote-Party-ID
 	header = (tech_pvt->cid_type == CID_TYPE_RPID && !switch_stristr("aastra", ua)) ? "Remote-Party-ID" : "P-Asserted-Identity";
 
-	if (!zstr(callee_name) && strcmp(callee_name, "_undef_") && !zstr(callee_number)) {
+	if (!zstr(callee_name) && strcmp(callee_name, "_undef_") && !zstr(callee_number)) {//被叫号码，被叫名均不为空，且不是_undef_
 		check_decode(callee_name, tech_pvt->session);
 
 		if (switch_stristr("update_display", tech_pvt->x_freeswitch_support_remote)) {
@@ -269,7 +269,7 @@ char *generate_pai_str(private_object_t *tech_pvt)
 		} else {
 			pai = switch_core_session_sprintf(tech_pvt->session, "%s: \"%s\" <%s>%s\n", header, callee_name, callee_number,
 											  tech_pvt->cid_type == CID_TYPE_RPID && !switch_stristr("aastra", ua) ?
-											  ";party=calling;privacy=off;screen=no" : "");
+											  ";party=calling;privacy=off;screen=no" : "");//TIGER 第一次invite打印这个，reinvite则没有
 		}
 
 	}
@@ -664,7 +664,7 @@ static switch_status_t sofia_acknowledge_call(switch_core_session_t *session)
 
 	return SWITCH_STATUS_FALSE;
 }
-
+//TIGER 200 OK
 static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 {
 	private_object_t *tech_pvt = (private_object_t *) switch_core_session_get_private(session);
@@ -678,16 +678,16 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 	int is_3pcc = 0;
 	char *sticky = NULL;
 	const char *call_info = switch_channel_get_variable(channel, "presence_call_info_full");
-
+//01. TIGER
 	if(sofia_acknowledge_call(session) == SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "Dialplan did not acknowledge_call; sent 100 Trying");
 	}
-
+//02.如果chann已经在会议里，那reinvite返回的200 OK里面contact多了一个isfocus
 	if (switch_channel_test_flag(channel, CF_CONFERENCE) && !zstr(tech_pvt->reply_contact) && !switch_stristr(";isfocus", tech_pvt->reply_contact)) {
 		tech_pvt->reply_contact = switch_core_session_sprintf(session, "%s;isfocus", tech_pvt->reply_contact);
 	}
-
-	//switch_core_media_set_local_sdp
+//03. TIGER  生成200 OK
+	//TFLAG_3PCC_INVITE 情况: switch_core_media_set_local_sdp
 	if(sofia_test_flag(tech_pvt, TFLAG_3PCC_INVITE)) {
 		// SNARK: complete hack to get final ack sent when a 3pcc invite has been passed from the other leg in bypass_media mode.
 			// This code handles the pass_indication sent after the 3pcc ack is received by the other leg in the is_3pcc && is_proxy case below.
@@ -704,7 +704,7 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG,
 						  "3PCC-PROXY nomedia - sending ack, SDP:\n%s\n", tech_pvt->mparams.local_sdp_str);
 
-
+//TIGER 
 		if (sofia_use_soa(tech_pvt)) {
 			nua_ack(tech_pvt->nh,
 					TAG_IF(!zstr(tech_pvt->user_via), SIPTAG_VIA_STR(tech_pvt->user_via)),
@@ -733,17 +733,18 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 		switch_channel_mark_answered(channel);     // ... and remember to actually answer the call!
 		return SWITCH_STATUS_SUCCESS;
 	}
-
+//04.TFLAG_ANS表示已处理过了？只处理inbound就可以了
 	if (sofia_test_flag(tech_pvt, TFLAG_ANS) || switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_OUTBOUND) {
 		return SWITCH_STATUS_SUCCESS;
 	}
-
+//05.
 	b_sdp = switch_channel_get_variable(channel, SWITCH_B_SDP_VARIABLE);
 	is_proxy = (switch_channel_test_flag(channel, CF_PROXY_MODE) || switch_channel_test_flag(channel, CF_PROXY_MEDIA));
 	is_3pcc_proxy = (sofia_test_pflag(tech_pvt->profile, PFLAG_3PCC_PROXY) && sofia_test_flag(tech_pvt, TFLAG_3PCC));
 	is_3pcc = (!sofia_test_pflag(tech_pvt->profile, PFLAG_3PCC_PROXY) && sofia_test_flag(tech_pvt, TFLAG_3PCC));
-
+//06.
 	if (b_sdp && is_proxy && !is_3pcc_proxy) {
+//06.01		
 		switch_core_media_set_local_sdp(session, b_sdp, SWITCH_TRUE);
 
 		if (switch_channel_test_flag(channel, CF_PROXY_MEDIA)) {
@@ -754,7 +755,8 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 		}
 	} else {
 		/* This if statement check and handles the 3pcc proxy mode */
-
+//06.02	
+//06.02.01
 		if (is_3pcc) {
 			switch_core_media_prepare_codecs(tech_pvt->session, SWITCH_TRUE);
 			tech_pvt->mparams.local_sdp_str = NULL;
@@ -782,14 +784,14 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 				}
 			}
 		}
-
+//06.02.02
 		if (is_3pcc || is_3pcc_proxy) {
 			/* Send the 200 OK */
 			if (!sofia_test_flag(tech_pvt, TFLAG_BYE)) {
 				char *extra_headers = sofia_glue_get_extra_headers(channel, SOFIA_SIP_RESPONSE_HEADER_PREFIX);
 
 				if (sofia_use_soa(tech_pvt)) {
-
+//tiger 发送200 ok
 					nua_respond(tech_pvt->nh, SIP_200_OK,
 								TAG_IF(is_proxy, NUTAG_AUTOANSWER(0)),
 								SIPTAG_CONTACT_STR(tech_pvt->profile->url),
@@ -840,7 +842,7 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 				return SWITCH_STATUS_SUCCESS;
 			}
 		}
-
+//06.02.03
 		if ((is_proxy && !b_sdp) || sofia_test_flag(tech_pvt, TFLAG_LATE_NEGOTIATION) ||
 			switch_core_media_codec_chosen(tech_pvt->session, SWITCH_MEDIA_TYPE_AUDIO) != SWITCH_STATUS_SUCCESS) {
 			sofia_clear_flag_locked(tech_pvt, TFLAG_LATE_NEGOTIATION);
@@ -865,7 +867,7 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 				}
 			}
 		}
-
+//06.02.04
 		if ((status = switch_core_media_choose_port(tech_pvt->session, SWITCH_MEDIA_TYPE_AUDIO, 0)) != SWITCH_STATUS_SUCCESS) {
 			switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 			return status;
@@ -875,7 +877,7 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 		if (sofia_media_activate_rtp(tech_pvt) != SWITCH_STATUS_SUCCESS) {
 			switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 		}
-
+	//tiger 日志:这里打印
 		if (tech_pvt->nh) {
 			if (tech_pvt->mparams.local_sdp_str) {
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Local SDP %s:\n%s\n", switch_channel_get_name(channel),
@@ -884,7 +886,7 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 		}
 
 	}
-
+//07. TIGER
 	if (sofia_test_flag(tech_pvt, TFLAG_NAT) ||
 		(val = switch_channel_get_variable(channel, "sip-force-contact")) ||
 		((val = switch_channel_get_variable(channel, "sip_sticky_contact")) && switch_true(val))) {
@@ -892,22 +894,22 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 		session_timeout = SOFIA_NAT_SESSION_TIMEOUT;
 		switch_channel_set_variable(channel, "sip_nat_detected", "true");
 	}
-
+//08.
 	if ((val = switch_channel_get_variable(channel, SOFIA_SESSION_TIMEOUT))) {
 		int v_session_timeout = atoi(val);
 		if (v_session_timeout >= 0) {
 			session_timeout = v_session_timeout;
 		}
 	}
-
-	if (!sofia_test_flag(tech_pvt, TFLAG_BYE)) {
+//09. 发送200 OK
+	if (!sofia_test_flag(tech_pvt, TFLAG_BYE)) {//没有bye，执行以下操作
 		char *extra_headers = sofia_glue_get_extra_headers(channel, SOFIA_SIP_RESPONSE_HEADER_PREFIX);
 		char *cid = NULL;
 
-
+//09.00 生成Remote-Party-ID
 		cid = generate_pai_str(tech_pvt);
 
-
+//09.01
 		if (switch_channel_test_flag(tech_pvt->channel, CF_PROXY_MODE) && tech_pvt->mparams.early_sdp) {
 			char *a, *b;
 
@@ -923,12 +925,12 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 				sofia_clear_flag(tech_pvt, TFLAG_ENABLE_SOA);
 			}
 		}
-
+//09.02
 		if ((tech_pvt->mparams.last_sdp_str && strstr(tech_pvt->mparams.last_sdp_str, "a=setup")) ||
 			(tech_pvt->mparams.local_sdp_str && strstr(tech_pvt->mparams.local_sdp_str, "a=setup"))) {
 			session_timeout = 0;
 		}
-
+//09.03
 		if ((tech_pvt->session_timeout = session_timeout)) {
 			tech_pvt->session_refresher = switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_OUTBOUND ? nua_local_refresher : nua_remote_refresher;
 			if (sofia_test_pflag(tech_pvt->profile, PFLAG_UPDATE_REFRESHER) || switch_channel_var_true(tech_pvt->channel, "sip_update_refresher")) {
@@ -937,26 +939,26 @@ static switch_status_t sofia_answer_channel(switch_core_session_t *session)
 		} else {
 			tech_pvt->session_refresher = nua_no_refresher;
 		}
-
-
+//09.04
+//执行nua_respond 发送200 OK
 		if (sofia_use_soa(tech_pvt)) {
-			nua_respond(tech_pvt->nh, SIP_200_OK,
-						NUTAG_AUTOANSWER(0),
-						TAG_IF(call_info, SIPTAG_CALL_INFO_STR(call_info)),
-						TAG_IF(sticky, NUTAG_PROXY(tech_pvt->record_route)),
-						TAG_IF(cid, SIPTAG_HEADER_STR(cid)),
-						NUTAG_SESSION_TIMER(tech_pvt->session_timeout),
-						NUTAG_SESSION_REFRESHER(tech_pvt->session_refresher),
-						NUTAG_UPDATE_REFRESH(tech_pvt->update_refresher),
+			nua_respond(tech_pvt->nh, SIP_200_OK,//返回200 OK
+						NUTAG_AUTOANSWER(0),//
+						TAG_IF(call_info, SIPTAG_CALL_INFO_STR(call_info)),//call id
+						TAG_IF(sticky, NUTAG_PROXY(tech_pvt->record_route)),//RECORD ROUTE
+						TAG_IF(cid, SIPTAG_HEADER_STR(cid)),//Remote-Party-ID字符串
+						NUTAG_SESSION_TIMER(tech_pvt->session_timeout),//Session-Expires
+						NUTAG_SESSION_REFRESHER(tech_pvt->session_refresher),//;refresher=uas
+						NUTAG_UPDATE_REFRESH(tech_pvt->update_refresher),//
 						SIPTAG_CONTACT_STR(tech_pvt->reply_contact),
-						SIPTAG_CALL_INFO_STR(switch_channel_get_variable(tech_pvt->channel, SOFIA_SIP_HEADER_PREFIX "call_info")),
-						SOATAG_USER_SDP_STR(tech_pvt->mparams.local_sdp_str),
-						SOATAG_REUSE_REJECTED(1),
-						SOATAG_AUDIO_AUX("cn telephone-event"),
-						TAG_IF(sofia_test_pflag(tech_pvt->profile, PFLAG_DISABLE_100REL), NUTAG_INCLUDE_EXTRA_SDP(1)),
-						SOATAG_RTP_SELECT(1),
-						TAG_IF(!zstr(extra_headers), SIPTAG_HEADER_STR(extra_headers)),
-						TAG_IF(switch_stristr("update_display", tech_pvt->x_freeswitch_support_remote),
+						SIPTAG_CALL_INFO_STR(switch_channel_get_variable(tech_pvt->channel, SOFIA_SIP_HEADER_PREFIX "call_info")),//
+						SOATAG_USER_SDP_STR(tech_pvt->mparams.local_sdp_str),//sdp
+						SOATAG_REUSE_REJECTED(1),//复用?
+						SOATAG_AUDIO_AUX("cn telephone-event"),//
+						TAG_IF(sofia_test_pflag(tech_pvt->profile, PFLAG_DISABLE_100REL), NUTAG_INCLUDE_EXTRA_SDP(1)),//
+						SOATAG_RTP_SELECT(1),//
+						TAG_IF(!zstr(extra_headers), SIPTAG_HEADER_STR(extra_headers)),//
+						TAG_IF(switch_stristr("update_display", tech_pvt->x_freeswitch_support_remote),//大概X-FS-Support: 
 							   SIPTAG_HEADER_STR("X-FS-Support: " FREESWITCH_SUPPORT)), TAG_END());
 		} else {
 			nua_respond(tech_pvt->nh, SIP_200_OK,
@@ -1294,7 +1296,7 @@ static switch_status_t sofia_send_dtmf(switch_core_session_t *session, const swi
 
 	return SWITCH_STATUS_SUCCESS;
 }
-
+//TIGER
 static switch_status_t sofia_receive_message(switch_core_session_t *session, switch_core_session_message_t *msg)
 {
 	switch_channel_t *channel = switch_core_session_get_channel(session);
@@ -1324,7 +1326,7 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 	if (switch_channel_test_flag(channel, CF_CONFERENCE) && !zstr(tech_pvt->reply_contact) && !switch_stristr(";isfocus", tech_pvt->reply_contact)) {
 		tech_pvt->reply_contact = switch_core_session_sprintf(session, "%s;isfocus", tech_pvt->reply_contact);
 	}
-
+//tiger 不同消息处理，相当于处理协议层或者预处理
 	/* ones that do not need to lock sofia mutex */
 	switch (msg->message_id) {
 	case SWITCH_MESSAGE_INDICATE_KEEPALIVE:
@@ -1488,7 +1490,7 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 		status = SWITCH_STATUS_FALSE;
 		goto end_lock;
 	}
-
+//tiger 根据不同消息处理
 	switch (msg->message_id) {
 
 	case SWITCH_MESSAGE_INDICATE_DEFLECT: {
@@ -2420,8 +2422,8 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 			}
 		}
 		break;
-	case SWITCH_MESSAGE_INDICATE_ANSWER:
-		status = sofia_answer_channel(session);
+	case SWITCH_MESSAGE_INDICATE_ANSWER: 
+		status = sofia_answer_channel(session);//TIGER 200 OK发送
 		break;
 	case SWITCH_MESSAGE_INDICATE_PROGRESS:
 		{
@@ -2501,11 +2503,12 @@ static switch_status_t sofia_receive_message(switch_core_session_t *session, swi
 					}
 
 					switch_channel_check_zrtp(tech_pvt->channel);
-
+//tiger 选择端口
 					if ((status = switch_core_media_choose_port(tech_pvt->session, SWITCH_MEDIA_TYPE_AUDIO, 0)) != SWITCH_STATUS_SUCCESS) {
 						switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
 						goto end_lock;
 					}
+//tiger 选择端口					
 					switch_core_media_gen_local_sdp(session, SDP_TYPE_RESPONSE, NULL, 0, NULL, 0);
 					if (sofia_media_activate_rtp(tech_pvt) != SWITCH_STATUS_SUCCESS) {
 						switch_channel_hangup(channel, SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER);
@@ -6266,7 +6269,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_sofia_load)
 	*module_interface = switch_loadable_module_create_module_interface(pool, modname);
 	sofia_endpoint_interface = switch_loadable_module_create_interface(*module_interface, SWITCH_ENDPOINT_INTERFACE);
 	sofia_endpoint_interface->interface_name = "sofia";
-	sofia_endpoint_interface->io_routines = &sofia_io_routines;
+	sofia_endpoint_interface->io_routines = &sofia_io_routines;//tiger 函数指针比如sofia_receive_message 都在这里加载
 	sofia_endpoint_interface->state_handler = &sofia_event_handlers;
 	sofia_endpoint_interface->recover_callback = sofia_recover_callback;
 

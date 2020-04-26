@@ -2812,7 +2812,7 @@ static void *get_rtt_payload(void *data, switch_size_t datalen, switch_payload_t
 	return buf;
 }
 
-//?
+//TIGER060 ÖØÒª media Ã½ÌåÐ­ÉÌºÍ´¦Àí£¬Ô­À´ÔÚmod_sofiaÄ£¿é£¬ÎªÁËÖ§³Öwebrtc·ÅÕâÀï
 SWITCH_DECLARE(switch_status_t) switch_core_media_read_frame(switch_core_session_t *session, switch_frame_t **frame,
 															 switch_io_flag_t flags, int stream_id, switch_media_type_t type)
 {
@@ -2823,7 +2823,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_read_frame(switch_core_session
 	int do_cng = 0;
 
 	switch_assert(session);
-
+//Ê×ÏÈÒªÓÐhandle
 	if (!(smh = session->media_handle)) {
 		return SWITCH_STATUS_FALSE;
 	}
@@ -2831,9 +2831,9 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_read_frame(switch_core_session
 	if (!smh->media_flags[SCMF_RUNNING]) {
 		return SWITCH_STATUS_FALSE;
 	}
-
+//»ñÈ¡ÏìÓ¦µÄengine£¬ÒôÆµµÄ»òÕßÊÓÆµµÄ
 	engine = &smh->engines[type];
-
+//ÀàÐÍÊÇ·ñÆ¥Åä
 	if (type == SWITCH_MEDIA_TYPE_AUDIO && ! switch_channel_test_flag(session->channel, CF_AUDIO)) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG1, "%s Reading audio from a non-audio session.\n", switch_channel_get_name(session->channel));
 		switch_yield(50000);
@@ -2866,11 +2866,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_read_frame(switch_core_session
 
 	while (smh->media_flags[SCMF_RUNNING] && engine->read_frame.datalen == 0) {
 		engine->read_frame.flags = SFF_NONE;
+//tiger media ¶ÁÈ¡Ò»Ö¡RTPÊý¾Ý		
 		status = switch_rtp_zerocopy_read_frame(engine->rtp_session, &engine->read_frame, flags);
 
 
 		if (status != SWITCH_STATUS_SUCCESS && status != SWITCH_STATUS_BREAK) {
-			if (status == SWITCH_STATUS_TIMEOUT) {
+			if (status == SWITCH_STATUS_TIMEOUT) {//tiger Èç¹û³¬Ê±
 
 				if (switch_channel_get_variable(session->channel, "execute_on_media_timeout")) {
 					*frame = &engine->read_frame;
@@ -2932,7 +2933,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_read_frame(switch_core_session
 				}
 
 				if (type == SWITCH_MEDIA_TYPE_AUDIO && engine->read_impl.samples_per_second) {
-					if ((val = switch_channel_get_variable(session->channel, "rtp_timeout_sec"))) {
+					if ((val = switch_channel_get_variable(session->channel, "rtp_timeout_sec"))) {//tiger ÓÃµÄ×î¶àµÄ³¬Ê±
 						int v = atoi(val);
 						if (v >= 0) {
 							rtp_timeout_sec = v;
@@ -2986,7 +2987,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_read_frame(switch_core_session
 		/* Try to read an RTCP frame, if successful raise an event */
 		if (switch_rtcp_zerocopy_read_frame(engine->rtp_session, &rtcp_frame) == SWITCH_STATUS_SUCCESS) {
 			switch_event_t *event;
-
+//RTCP´¦Àí
 			if (switch_event_create(&event, SWITCH_EVENT_RECV_RTCP_MESSAGE) == SWITCH_STATUS_SUCCESS) {
 				char value[30];
 				char header[50];
@@ -3317,7 +3318,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_read_frame(switch_core_session
 				}
 
 				if (engine->tf->text_frame.datalen == 0) {
-					engine->tf->text_frame.data = "ï¿½ ";
+					engine->tf->text_frame.data = "ï¿?";
 					engine->tf->text_frame.datalen = strlen(engine->tf->text_frame.data);
 				}
 
@@ -3354,7 +3355,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_read_frame(switch_core_session
 	return status;
 }
 
-//?
+//tiger media Ã½ÌåÐ­ÉÌºÍ´¦Àí
 SWITCH_DECLARE(switch_status_t) switch_core_media_write_frame(switch_core_session_t *session,
 												  switch_frame_t *frame, switch_io_flag_t flags, int stream_id, switch_media_type_t type)
 {
@@ -3411,7 +3412,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_write_frame(switch_core_sessio
 	}
 
 	engine->timestamp_send += samples;
-
+//tiger media Ð´Ò»Ö¡RTPÊý¾Ý	
 	if (switch_rtp_write_frame(engine->rtp_session, frame) < 0) {
 		status = SWITCH_STATUS_FALSE;
 	}
@@ -4719,7 +4720,7 @@ static void switch_core_media_set_rmode(switch_core_session_t *session, switch_m
 	switch_channel_set_variable(session->channel, varname, rmode_str);
 }
 
-//?
+//tiger SDP Ð­ÉÌÖØÒª£¬Mod_verto (verto_tech_media, verto__attach_func)ºÍsofia(sofia_media_negotiate_sdp)Í¬Ê±µ÷ÓÃÕâ¸öº¯Êý
 SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *session, const char *r_sdp, uint8_t *proceed, switch_sdp_type_t sdp_type)
 {
 	uint8_t match = 0, vmatch = 0, almost_vmatch = 0, tmatch = 0, fmatch = 0;
@@ -5474,7 +5475,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 					if (imp->codec_type != SWITCH_CODEC_TYPE_AUDIO) {
 						continue;
 					}
-
+//tiger ÈÕÖ¾: ¶Ô±ÈÓïÒôµÄcodec
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "Audio Codec Compare [%s:%d:%u:%d:%u:%d]/[%s:%d:%u:%d:%u:%d]\n",
 									  rm_encoding, map->rm_pt, (int) remote_codec_rate, codec_ms, map_bit_rate, map_channels,
 									  imp->iananame, imp->ianacode, codec_rate, imp->microseconds_per_packet / 1000, bit_rate, imp->number_of_channels);
@@ -5510,7 +5511,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						} else if ((ptime && codec_ms && codec_ms * 1000 != imp->microseconds_per_packet) || remote_codec_rate != codec_rate) {
 							/* ptime does not match */
 							match = 0;
-
+//tiger 
 							switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG,
 											  "Audio Codec Compare [%s:%d:%u:%d:%u:%d] is saved as a near-match\n",
 											  imp->iananame, imp->ianacode, codec_rate, imp->microseconds_per_packet / 1000, bit_rate, imp->number_of_channels);
@@ -5529,7 +5530,7 @@ SWITCH_DECLARE(uint8_t) switch_core_media_negotiate_sdp(switch_core_session_t *s
 						matches[m_idx].imp = imp;
 						matches[m_idx].map = map;
 						m_idx++;
-
+//tiger ÈÕÖ¾: ÕÒµ½ÓïÒôµÄcodec
 						switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG,
 										  "Audio Codec Compare [%s:%d:%u:%d:%u:%d] ++++ is saved as a match\n",
 										  imp->iananame, imp->ianacode, codec_rate, imp->microseconds_per_packet / 1000, bit_rate, imp->number_of_channels);
@@ -8002,8 +8003,8 @@ SWITCH_DECLARE(void) switch_core_media_reset_autofix(switch_core_session_t *sess
 }
 
 
-
-//?
+//TIGER IMPORT
+//tiger  ÖØÒªº¯Êý
 SWITCH_DECLARE(switch_status_t) switch_core_media_choose_port(switch_core_session_t *session, switch_media_type_t type, int force)
 {
 	char *lookup_rtpip;	/* Pointer to externally looked up address */
@@ -8045,7 +8046,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_choose_port(switch_core_sessio
 	if (engine->local_sdp_port) {
 		switch_rtp_release_port(smh->mparams->rtpip, engine->local_sdp_port);
 	}
-
+//TIGER 
 	/* Request a local port from the core's allocator */
 	if (!(engine->local_sdp_port = switch_rtp_request_port(smh->mparams->rtpip))) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_CRIT, "No %s RTP ports available!\n", tstr);
@@ -8372,7 +8373,7 @@ static void check_dtls_reinvite(switch_core_session_t *session, switch_rtp_engin
 	}
 }
 
-//?
+//tiger rtp ÖØÒª ÊÇsofia ÀïÃæ³éÈ¡³öÀ´¸øvertoºÍsofiaÓÃ, 
 SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_session_t *session)
 
 {
@@ -8506,8 +8507,9 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 			switch_channel_set_variable(session->channel, SWITCH_REMOTE_MEDIA_PORT_VARIABLE, tmp);
 		}
 	}
-
+//
 	if (!switch_channel_test_flag(session->channel, CF_PROXY_MEDIA)) {
+//TIGER ÈÕÖ¾:		
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "AUDIO RTP [%s] %s port %d -> %s port %d codec: %u ms: %d\n",
 						  switch_channel_get_name(session->channel),
 						  a_engine->local_sdp_ip,
@@ -8599,7 +8601,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 		switch_channel_set_variable(session->channel, "rtp_use_timer_name", timer_name);
 
 
-
+//´´½¨rtp socket£¬°ó¶¨µØÖ·
 		a_engine->rtp_session = switch_rtp_new(a_engine->local_sdp_ip,
 											   a_engine->local_sdp_port,
 											   a_engine->cur_payload_map->remote_sdp_ip,
@@ -9004,7 +9006,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 			flags[SWITCH_RTP_FLAG_NOBLOCK] = 0;
 			flags[SWITCH_RTP_FLAG_TEXT]++;
 			//flags[SWITCH_RTP_FLAG_VIDEO]++;
-
+//´´½¨rtp socket£¬°ó¶¨µØÖ·
 			t_engine->rtp_session = switch_rtp_new(a_engine->local_sdp_ip,
 												   t_engine->local_sdp_port,
 												   t_engine->cur_payload_map->remote_sdp_ip,
@@ -9330,7 +9332,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_media_activate_rtp(switch_core_sessi
 			if (v_engine->tmmbr) {
 				flags[SWITCH_RTP_FLAG_TMMBR]++;
 			}
-			
+	//´´½¨rtp socket£¬°ó¶¨µØÖ·		
 			v_engine->rtp_session = switch_rtp_new(a_engine->local_sdp_ip,
 														 v_engine->local_sdp_port,
 														 v_engine->cur_payload_map->remote_sdp_ip,
@@ -10019,7 +10021,7 @@ static void add_fb(char *buf, uint32_t buflen, int pt, int fir, int nack, int pl
 
 }
 
-//?
+//tiger ZH
 #define SDPBUFLEN 65536
 SWITCH_DECLARE(void) switch_core_media_gen_local_sdp(switch_core_session_t *session, switch_sdp_type_t sdp_type, const char *ip, switch_port_t port, const char *sr, int force)
 {
@@ -10032,7 +10034,7 @@ SWITCH_DECLARE(void) switch_core_media_gen_local_sdp(switch_core_session_t *sess
 	const char *family;
 	const char *pass_fmtp = switch_channel_get_variable(session->channel, "rtp_video_fmtp");
 	const char *ov_fmtp = switch_channel_get_variable(session->channel, "rtp_force_video_fmtp");
-	const char *append_audio = switch_channel_get_variable(session->channel, "rtp_append_audio_sdp");
+	const char *append_audio = switch_channel_get_variable(session->channel, "rtp_append_audio_sdp");//TIGER APPEND SDP
 	const char *append_video = switch_channel_get_variable(session->channel, "rtp_append_video_sdp");
 	char srbuf[128] = "";
 	const char *var_val;
@@ -10461,7 +10463,7 @@ SWITCH_DECLARE(void) switch_core_media_gen_local_sdp(switch_core_session_t *sess
 				smh->mparams->cng_pt = 0;
 			}
 		}
-
+//TIGER ×·¼Ósdp
 		if (append_audio) {
 			switch_snprintf(buf + strlen(buf), SDPBUFLEN - strlen(buf), "%s%s", append_audio, end_of(append_audio) == '\n' ? "" : "\r\n");
 		}
@@ -10499,7 +10501,7 @@ SWITCH_DECLARE(void) switch_core_media_gen_local_sdp(switch_core_session_t *sess
 		}
 
 		//switch_snprintf(buf + strlen(buf), SDPBUFLEN - strlen(buf), "a=ssrc:%u\r\n", a_engine->ssrc);
-
+//Èç¹ûÊÇICE
 		if (a_engine->ice_out.cands[0][0].ready) {
 			char tmp1[11] = "";
 			char tmp2[11] = "";
@@ -15376,7 +15378,7 @@ SWITCH_DECLARE(switch_msrp_session_t *) switch_core_media_get_msrp_session(switc
 	return session->media_handle->msrp_session;
 }
 
-
+//TIGER1 ÖØÒªswitch_core_session_write_frame
 SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_session_t *session, switch_frame_t *frame, switch_io_flag_t flags,
 																int stream_id)
 {
@@ -15424,6 +15426,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 	if (switch_test_flag(frame, SFF_PROXY_PACKET) || pass_cng) {
 		/* Fast PASS! */
 		switch_mutex_lock(session->codec_write_mutex);
+//TIGER1 ¼ûÊé:´¦ÓÚproxy packet×´Ì¬£¬·¢ËÍ		
 		status = perform_write(session, frame, flag, stream_id);
 		switch_mutex_unlock(session->codec_write_mutex);
 		return status;
@@ -15530,6 +15533,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 		session->raw_write_frame.datalen = session->raw_write_frame.buflen;
 		frame->codec->cur_frame = frame;
 		session->write_codec->cur_frame = frame;
+//TIGER1 ½âÂë		
 		status = switch_core_codec_decode(frame->codec,
 										  session->write_codec,
 										  frame->data,
@@ -15666,7 +15670,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 	}
 
 
-
+//TIGER1 Ð´µÄÊ±ºòÔö¼ÓÒ»¸ömedia_bug£¬ ¿ÉÒÔÔÚ·¢ËÍÖ®Ç°¶ÔÊý¾Ý½øÐÐÐÞ¸ÄºÍÌæ»»
 	if (session->bugs) {
 		switch_media_bug_t *bp;
 		int prune = 0;
@@ -15756,6 +15760,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 			frame->codec->cur_frame = frame;
 			switch_assert(enc_frame->datalen <= SWITCH_RECOMMENDED_BUFFER_SIZE);
 			switch_assert(session->enc_read_frame.datalen <= SWITCH_RECOMMENDED_BUFFER_SIZE);
+//TIGER1 ±àÂë			
 			status = switch_core_codec_encode(session->write_codec,
 											  frame->codec,
 											  enc_frame->data,
@@ -15968,6 +15973,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 					short *data = write_frame->data;
 					switch_mutex_lock(session->resample_mutex);
 					if (session->read_resampler) {
+//TIGER1 ÖØ²ÉÑù						
 						switch_resample_process(session->read_resampler, data, write_frame->datalen / 2 / session->read_resampler->channels);
 						memcpy(data, session->read_resampler->to, session->read_resampler->to_len * 2 * session->read_resampler->channels);
 						write_frame->samples = session->read_resampler->to_len;
@@ -16006,7 +16012,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 	if (ptime_mismatch || resample) {
 		write_frame->timestamp = 0;
 	}
-
+//TIGER1 Ð´
 	if (do_write) {
 		status = perform_write(session, write_frame, flags, stream_id);
 	}

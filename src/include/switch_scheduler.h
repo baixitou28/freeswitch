@@ -50,7 +50,7 @@ SWITCH_BEGIN_EXTERN_C
 	unsigned long hash;
 };
 
-
+//TIGER switch_scheduler_ 任务处理
 /*!
   \brief Schedule a task in the future
   \param task_runtime the time in epoch seconds to execute the task.

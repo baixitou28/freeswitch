@@ -2989,7 +2989,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_udptl_mode(switch_rtp_t *rtp_session)
 
 }
 
-
+//TIGER 关闭老的端口，创建新的
 SWITCH_DECLARE(switch_status_t) switch_rtp_set_remote_address(switch_rtp_t *rtp_session, const char *host, switch_port_t port, switch_port_t remote_rtcp_port,
 															  switch_bool_t change_adv_addr, const char **err)
 {
@@ -3019,9 +3019,9 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_set_remote_address(switch_rtp_t *rtp_
 		rtp_session->sock_output = rtp_session->sock_input;
 	} else {
 		if (rtp_session->sock_output && rtp_session->sock_output != rtp_session->sock_input) {
-			switch_socket_close(rtp_session->sock_output);
+			switch_socket_close(rtp_session->sock_output);//关闭老的
 		}
-		if ((status = switch_socket_create(&rtp_session->sock_output,
+		if ((status = switch_socket_create(&rtp_session->sock_output,//创建新的
 										   switch_sockaddr_get_family(rtp_session->remote_addr),
 										   SOCK_DGRAM, 0, rtp_session->pool)) != SWITCH_STATUS_SUCCESS) {
 
@@ -4419,7 +4419,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_create(switch_rtp_t **new_rtp_session
 
 	return SWITCH_STATUS_SUCCESS;
 }
-
+//TIGER RTP 创建rtp socket
 SWITCH_DECLARE(switch_rtp_t *) switch_rtp_new(const char *rx_host,
 											  switch_port_t rx_port,
 											  const char *tx_host,
@@ -4450,19 +4450,19 @@ SWITCH_DECLARE(switch_rtp_t *) switch_rtp_new(const char *rx_host,
 		*err = "Missing remote port";
 		goto end;
 	}
-
+//创建
 	if (switch_rtp_create(&rtp_session, payload, samples_per_interval, ms_per_packet, flags, timer_name, err, pool) != SWITCH_STATUS_SUCCESS) {
 		goto end;
 	}
 
 	switch_mutex_lock(rtp_session->flag_mutex);
-
+//本地地址
 	if (switch_rtp_set_local_address(rtp_session, rx_host, rx_port, err) != SWITCH_STATUS_SUCCESS) {
 		switch_mutex_unlock(rtp_session->flag_mutex);
 		rtp_session = NULL;
 		goto end;
 	}
-
+//远端地址
 	if (switch_rtp_set_remote_address(rtp_session, tx_host, tx_port, 0, SWITCH_TRUE, err) != SWITCH_STATUS_SUCCESS) {
 		switch_mutex_unlock(rtp_session->flag_mutex);
 		rtp_session = NULL;
@@ -4974,7 +4974,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_sync_stats(switch_rtp_t *rtp_session)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-
+//TIGER RTP 释放
 SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 {
 	void *pop;
@@ -4996,15 +4996,15 @@ SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 
 	WRITE_DEC((*rtp_session));
 	READ_DEC((*rtp_session));
-
+//
 	if ((*rtp_session)->flags[SWITCH_RTP_FLAG_VAD]) {
 		switch_rtp_disable_vad(*rtp_session);
 	}
 
 	switch_mutex_lock((*rtp_session)->flag_mutex);
-
+//释放socket
 	switch_rtp_kill_socket(*rtp_session);
-
+//DTMF队列
 	while (switch_queue_trypop((*rtp_session)->dtmf_data.dtmf_inqueue, &pop) == SWITCH_STATUS_SUCCESS) {
 		switch_safe_free(pop);
 	}
@@ -5012,7 +5012,7 @@ SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 	while (switch_queue_trypop((*rtp_session)->dtmf_data.dtmf_queue, &pop) == SWITCH_STATUS_SUCCESS) {
 		switch_safe_free(pop);
 	}
-
+//TGGER JB, VB, vbw， dtls
 	if ((*rtp_session)->jb) {
 		switch_jb_destroy(&(*rtp_session)->jb);
 	}
@@ -5037,7 +5037,7 @@ SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 		free_dtls(&(*rtp_session)->rtcp_dtls);
 	}
 
-
+//关闭句柄 4个
 	sock = (*rtp_session)->sock_input;
 	(*rtp_session)->sock_input = NULL;
 	switch_socket_close(sock);
@@ -5059,7 +5059,7 @@ SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 			}
 		}
 	}
-
+//释放SRTP
 #ifdef ENABLE_SRTP
 	if ((*rtp_session)->flags[SWITCH_RTP_FLAG_SECURE_SEND]) {
 		for(x = 0; x < 2; x++) {
@@ -5081,7 +5081,7 @@ SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 		(*rtp_session)->flags[SWITCH_RTP_FLAG_SECURE_RECV] = 0;
 	}
 #endif
-
+//释放ZRTP
 #ifdef ENABLE_ZRTP
 	/* ZRTP */
 	if (zrtp_on && !(*rtp_session)->flags[SWITCH_RTP_FLAG_PROXY_MEDIA]) {
@@ -5104,6 +5104,7 @@ SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 		}
 	}
 #endif
+//释放timer_interface
 	if ((*rtp_session)->timer.timer_interface) {
 		switch_core_timer_destroy(&(*rtp_session)->timer);
 	}
@@ -5111,7 +5112,7 @@ SWITCH_DECLARE(void) switch_rtp_destroy(switch_rtp_t **rtp_session)
 	if ((*rtp_session)->write_timer.timer_interface) {
 		switch_core_timer_destroy(&(*rtp_session)->write_timer);
 	}
-
+//释放端口
 	switch_rtp_release_port((*rtp_session)->rx_host, (*rtp_session)->rx_port);
 	switch_mutex_unlock((*rtp_session)->flag_mutex);
 
@@ -5642,7 +5643,7 @@ static int get_recv_payload(switch_rtp_t *rtp_session)
 }
 
 #define return_cng_frame() do_cng = 1; goto timer_check
-
+//TIGER082 RTP读取
 static switch_status_t read_rtp_packet(switch_rtp_t *rtp_session, switch_size_t *bytes, switch_frame_flag_t *flags,
 									   payload_map_t **pmapP, switch_status_t poll_status, switch_bool_t return_jb_packet)
 {
@@ -5660,7 +5661,7 @@ static switch_status_t read_rtp_packet(switch_rtp_t *rtp_session, switch_size_t 
 
 	tries++;
 
-	if (tries > 20) {
+	if (tries > 20) {//TIGER 最多尝试读20次，可以提高线程的局部性，减少切换成本
 		if (rtp_session->jb && !rtp_session->pause_jb && jb_valid(rtp_session)) {
 			switch_jb_reset(rtp_session->jb);
 		}
@@ -5670,22 +5671,22 @@ static switch_status_t read_rtp_packet(switch_rtp_t *rtp_session, switch_size_t 
 		return SWITCH_STATUS_BREAK;
 	}
 
-	if (block) {
+	if (block) {//阻塞式读
 		int to = 20000;
 		int fdr = 0;
 
 		if (rtp_session->flags[SWITCH_RTP_FLAG_VIDEO]) {
-			to = 100000;
+			to = 100000;//如果视频，时钟再短一点
 		} else {
-			if (rtp_session->flags[SWITCH_RTP_FLAG_USE_TIMER] && rtp_session->timer.interval) {
+			if (rtp_session->flags[SWITCH_RTP_FLAG_USE_TIMER] && rtp_session->timer.interval) {//也可以自定义定时器
 				to = rtp_session->timer.interval * 1000;
 			}
 		}
-
+		//TIGER poll
 		poll_status = switch_poll(rtp_session->read_pollfd, 1, &fdr, to);
 
 		if (rtp_session->flags[SWITCH_RTP_FLAG_USE_TIMER] && rtp_session->timer.interval) {
-			switch_core_timer_sync(&rtp_session->timer);
+			switch_core_timer_sync(&rtp_session->timer);//
 		}
 
 		if (rtp_session->session) {
@@ -5708,6 +5709,7 @@ static switch_status_t read_rtp_packet(switch_rtp_t *rtp_session, switch_size_t 
 	memset(&rtp_session->last_rtp_hdr, 0, sizeof(rtp_session->last_rtp_hdr));
 
 	if (poll_status == SWITCH_STATUS_SUCCESS) {
+//TIGER RTP 真正从socket读取数据		
 		status = switch_socket_recvfrom(rtp_session->from_addr, rtp_session->sock_input, 0, (void *) &rtp_session->recv_msg, bytes);
 	} else {
 		*bytes = 0;
@@ -5721,6 +5723,7 @@ static switch_status_t read_rtp_packet(switch_rtp_t *rtp_session, switch_size_t 
 
 		if ((*b >= 20) && (*b <= 64)) {
 			if (rtp_session->dtls) {
+//支持dtls				
 				rtp_session->dtls->bytes = *bytes;
 				rtp_session->dtls->data = (void *) &rtp_session->recv_msg;
 			}
@@ -5815,7 +5818,7 @@ static switch_status_t read_rtp_packet(switch_rtp_t *rtp_session, switch_size_t 
 				//if (rtp_session->remote_ssrc != rtp_session->stats.rtcp.peer_ssrc && rtp_session->stats.rtcp.peer_ssrc) {
 				//	rtp_session->remote_ssrc = rtp_session->stats.rtcp.peer_ssrc;
 				//}
-
+				//TIGER 使用探测到的ssrc
 				if (rtp_session->remote_ssrc != rtp_session->last_rtp_hdr.ssrc && rtp_session->last_rtp_hdr.ssrc) {
 					rtp_session->remote_ssrc = ntohl(rtp_session->last_rtp_hdr.ssrc);
 				}
@@ -6166,7 +6169,7 @@ static switch_status_t read_rtp_packet(switch_rtp_t *rtp_session, switch_size_t 
 			}
 
 
-#ifdef DEBUG_CHROME
+#ifdef DEBUG_CHROME//TIGER chrome 调试chrome 这样更方便
 
 			if (rtp_session->flags[SWITCH_RTP_FLAG_VIDEO] && rtp_session->has_rtp) {
 
@@ -6997,7 +7000,7 @@ static switch_status_t read_rtcp_packet(switch_rtp_t *rtp_session, switch_size_t
 
 	return status;
 }
-
+//TIGER090 总要  RTP 读取rtp或rtcp //tiger rtp
 static int rtp_common_read(switch_rtp_t *rtp_session, switch_payload_t *payload_type,
 						   payload_map_t **pmapP, switch_frame_flag_t *flags, switch_io_flag_t io_flags)
 {
@@ -7018,7 +7021,7 @@ static int rtp_common_read(switch_rtp_t *rtp_session, switch_payload_t *payload_
 	int read_loops = 0;
 	int slept = 0;
 	switch_bool_t got_jb = SWITCH_FALSE;
-
+	//TIGER 如何判断?
 	if (!switch_rtp_ready(rtp_session)) {
 		return -1;
 	}
@@ -7034,7 +7037,7 @@ static int rtp_common_read(switch_rtp_t *rtp_session, switch_payload_t *payload_
 	READ_INC(rtp_session);
 
 
-
+//TIGER RTP ??? 判断机制？==>后面是poll函数
 	while (switch_rtp_ready(rtp_session)) {
 		int do_cng = 0;
 		int read_pretriggered = 0;
@@ -7050,6 +7053,7 @@ static int rtp_common_read(switch_rtp_t *rtp_session, switch_payload_t *payload_
 			rtp_session->read_pollfd) {
 
 			if (rtp_session->jb && !rtp_session->pause_jb && jb_valid(rtp_session)) {
+				//TIGER RTP jb 
 				while (switch_poll(rtp_session->read_pollfd, 1, &fdr, 0) == SWITCH_STATUS_SUCCESS) {
 					status = read_rtp_packet(rtp_session, &bytes, flags, pmapP, SWITCH_STATUS_SUCCESS, SWITCH_FALSE);
 
@@ -7074,6 +7078,7 @@ static int rtp_common_read(switch_rtp_t *rtp_session, switch_payload_t *payload_
 			} else if ((rtp_session->flags[SWITCH_RTP_FLAG_AUTOFLUSH] || rtp_session->flags[SWITCH_RTP_FLAG_STICKY_FLUSH])) {
 
 				if (switch_poll(rtp_session->read_pollfd, 1, &fdr, 0) == SWITCH_STATUS_SUCCESS) {
+				//TIGER RTP 	非jb				
 					status = read_rtp_packet(rtp_session, &bytes, flags, pmapP, SWITCH_STATUS_SUCCESS, SWITCH_FALSE);
 					if (status == SWITCH_STATUS_GENERR) {
 						ret = -1;
@@ -7244,7 +7249,7 @@ static int rtp_common_read(switch_rtp_t *rtp_session, switch_payload_t *payload_
 					if (bytes && status == SWITCH_STATUS_SUCCESS) {
 						rtp_session->missed_count = 0;
 					} else if (++rtp_session->missed_count >= rtp_session->max_missed_packets) {
-						ret = -2;
+						ret = -2;//TIGER rtp-timeout-sec 转化为max_missed_packets，这样计算是不是简单一点？
 						goto end;
 					}
 				}
@@ -7859,7 +7864,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_read(switch_rtp_t *rtp_session, void 
 
 	if (bytes < 0) {
 		*datalen = 0;
-		return bytes == -2 ? SWITCH_STATUS_TIMEOUT : SWITCH_STATUS_GENERR;
+		return bytes == -2 ? SWITCH_STATUS_TIMEOUT : SWITCH_STATUS_GENERR;//tiger 如果-2 返回SWITCH_STATUS_TIMEOUT,-2就是rtp_session->missed_count >= rtp_session->max_missed_packet
 	} else if (bytes == 0) {
 		*datalen = 0;
 		return SWITCH_STATUS_BREAK;
@@ -7895,7 +7900,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtcp_zerocopy_read_frame(switch_rtp_t *rt
 
 	return SWITCH_STATUS_TIMEOUT;
 }
-
+//TIGER070重要 rtp
 SWITCH_DECLARE(switch_status_t) switch_rtp_zerocopy_read_frame(switch_rtp_t *rtp_session, switch_frame_t *frame, switch_io_flag_t io_flags)
 {
 	int bytes = 0;
@@ -7903,11 +7908,11 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_zerocopy_read_frame(switch_rtp_t *rtp
 	if (!switch_rtp_ready(rtp_session)) {
 		return SWITCH_STATUS_FALSE;
 	}
-
+//TIGER rtp
 	bytes = rtp_common_read(rtp_session, &frame->payload, &frame->pmap, &frame->flags, io_flags);
 
 	frame->data = RTP_BODY(rtp_session);
-
+//构造frame
 	if (!rtp_session->flags[SWITCH_RTP_FLAG_UDPTL] && (bytes < rtp_header_len || switch_test_flag(frame, SFF_CNG))) {
 		frame->packet = NULL;
 		frame->timestamp = 0;
@@ -7930,7 +7935,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_zerocopy_read_frame(switch_rtp_t *rtp
 		frame->ssrc = ntohl(rtp_session->last_rtp_hdr.ssrc);
 		frame->m = rtp_session->last_rtp_hdr.m ? SWITCH_TRUE : SWITCH_FALSE;
 	}
-
+//TIGER ZRTP
 #ifdef ENABLE_ZRTP
 	if (zrtp_on && rtp_session->flags[SWITCH_ZRTP_FLAG_SECURE_MITM_RECV]) {
 		zrtp_session_info_t zrtp_session_info;
@@ -7995,7 +8000,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_zerocopy_read_frame(switch_rtp_t *rtp
 	frame->datalen = bytes;
 	return SWITCH_STATUS_SUCCESS;
 }
-
+//tiger080 重要core rtp
 SWITCH_DECLARE(switch_status_t) switch_rtp_zerocopy_read(switch_rtp_t *rtp_session,
 														 void **data, uint32_t *datalen, switch_payload_t *payload_type, switch_frame_flag_t *flags,
 														 switch_io_flag_t io_flags)
@@ -8007,7 +8012,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_zerocopy_read(switch_rtp_t *rtp_sessi
 	}
 
 	bytes = rtp_common_read(rtp_session, payload_type, NULL, flags, io_flags);
-	*data = RTP_BODY(rtp_session);
+	*data = RTP_BODY(rtp_session);//取的是指针
 
 	if (bytes < 0) {
 		*datalen = 0;
@@ -8041,7 +8046,7 @@ static int rtp_write_ready(switch_rtp_t *rtp_session, uint32_t bytes, int line)
 	return 1;
 }
 
-
+//TIGER RTP 写
 static int rtp_common_write(switch_rtp_t *rtp_session,
 							rtp_msg_t *send_msg, void *data, uint32_t datalen, switch_payload_t payload, uint32_t timestamp, switch_frame_flag_t *flags)
 {
@@ -8650,7 +8655,7 @@ SWITCH_DECLARE(switch_status_t) switch_rtp_enable_vad(switch_rtp_t *rtp_session,
 	switch_set_flag(&rtp_session->vad_data, SWITCH_VAD_FLAG_CNG);
 	return SWITCH_STATUS_SUCCESS;
 }
-
+//TIGER RTP
 SWITCH_DECLARE(int) switch_rtp_write_frame(switch_rtp_t *rtp_session, switch_frame_t *frame)
 {
 	uint8_t fwd = 0;
@@ -8872,7 +8877,7 @@ SWITCH_DECLARE(int) switch_rtp_write_frame(switch_rtp_t *rtp_session, switch_fra
 	  send_msg->header.pt = rtp_session->payload;
 	  }
 	*/
-
+//TIGER RTP
 	r = rtp_common_write(rtp_session, send_msg, data, len, payload, ts, &frame->flags);
 
 	if (send_msg) {

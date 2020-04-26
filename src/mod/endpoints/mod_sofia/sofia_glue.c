@@ -716,14 +716,14 @@ char *sofia_glue_get_non_extra_unknown_headers(sip_t const *sip)
 
 	return unknown;
 }
-
+//TIGER INVITE sofia_glue_do_invite 发送invite
 switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 {
 	char *alert_info = NULL;
 	const char *max_forwards = NULL;
 	const char *alertbuf;
-	private_object_t *tech_pvt = switch_core_session_get_private(session);
-	switch_channel_t *channel = switch_core_session_get_channel(session);
+	private_object_t *tech_pvt = switch_core_session_get_private(session);//获取sip结构体
+	switch_channel_t *channel = switch_core_session_get_channel(session);//获取channel
 	switch_caller_profile_t *caller_profile;
 	const char *cid_name, *cid_num;
 	char *e_dest = NULL;
@@ -739,7 +739,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 	sofia_destination_t *dst = NULL;
 	sofia_cid_type_t cid_type = tech_pvt->profile->cid_type;
 	sip_cseq_t *cseq = NULL;
-	const char *invite_record_route = switch_channel_get_variable(tech_pvt->channel, "sip_invite_record_route");
+	const char *invite_record_route = switch_channel_get_variable(tech_pvt->channel, "sip_invite_record_route");//获取sip的各个参数
 	const char *invite_route_uri = switch_channel_get_variable(tech_pvt->channel, "sip_invite_route_uri");
 	const char *invite_full_from = switch_channel_get_variable(tech_pvt->channel, "sip_invite_full_from");
 	const char *invite_full_to = switch_channel_get_variable(tech_pvt->channel, "sip_invite_full_to");
@@ -754,12 +754,12 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 	int require_timer = 1;
 	uint8_t is_t38 = 0;
 	const char *hold_char = "*";
-
+	//TIGER
 	if (sofia_test_flag(tech_pvt, TFLAG_SIP_HOLD_INACTIVE) ||
 		switch_true(switch_channel_get_variable_dup(tech_pvt->channel, "sofia_hold_inactive", SWITCH_FALSE, -1))) {
 		hold_char = "#";
 	}
-
+	// TIGER
 	if (switch_channel_test_flag(tech_pvt->channel, CF_RECOVERING)) {
 		const char *recover_contact = switch_channel_get_variable(tech_pvt->channel, "sip_recover_contact");
 		recover_via = switch_channel_get_variable(tech_pvt->channel, "sip_recover_via");
@@ -774,7 +774,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		}
 	}
 
-
+	// TIGER
 	if ((rep = switch_channel_get_variable(channel, SOFIA_REPLACES_HEADER))) {
 		switch_channel_set_variable(channel, SOFIA_REPLACES_HEADER, NULL);
 	}
@@ -782,7 +782,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 	switch_assert(tech_pvt != NULL);
 
 	sofia_clear_flag_locked(tech_pvt, TFLAG_SDP);
-
+	// TIGER
 	caller_profile = switch_channel_get_caller_profile(channel);
 
 	if (!caller_profile) {
@@ -790,12 +790,12 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		return SWITCH_STATUS_FALSE;
 	}
 
-
+	// TIGER
 	if ((val = switch_channel_get_variable_dup(channel, "sip_require_timer", SWITCH_FALSE, -1)) && switch_false(val)) {
 		require_timer = 0;
 	}
 
-
+	// TIGER
 	cid_name = caller_profile->caller_id_name;
 	cid_num = caller_profile->caller_id_number;
 
@@ -807,25 +807,25 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 	check_decode(cid_name, session);
 	check_decode(cid_num, session);
 
-
+	// TIGER
 	if ((alertbuf = switch_channel_get_variable(channel, "alert_info"))) {
 		alert_info = switch_core_session_sprintf(tech_pvt->session, "Alert-Info: %s", alertbuf);
 	}
 
 	max_forwards = switch_channel_get_variable(channel, SWITCH_MAX_FORWARDS_VARIABLE);
-
+	// TIGER
 	if ((status = switch_core_media_choose_port(tech_pvt->session, SWITCH_MEDIA_TYPE_AUDIO, 0)) != SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "Port Error!\n");
 		return status;
 	}
-
+	// TIGER
 	if (!switch_channel_get_private(tech_pvt->channel, "t38_options") || zstr(tech_pvt->mparams.local_sdp_str)) {
 		switch_core_media_gen_local_sdp(session, SDP_TYPE_REQUEST, NULL, 0, NULL, 0);
 	}
 
 	sofia_set_flag_locked(tech_pvt, TFLAG_READY);
 
-	if (!tech_pvt->nh) {
+	if (!tech_pvt->nh) { // TIGER
 		char *d_url = NULL, *url = NULL, *url_str = NULL;
 		sofia_private_t *sofia_private;
 		char *invite_contact = NULL, *to_str, *use_from_str, *from_str;
@@ -847,12 +847,12 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		const char *invite_domain = switch_channel_get_variable(tech_pvt->channel, "sip_invite_domain");
 
 		const char *use_name, *use_number;
-
+		// TIGER
 		if (zstr(tech_pvt->dest)) {
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "URL Error!\n");
 			return SWITCH_STATUS_FALSE;
 		}
-
+		// TIGER
 		if ((d_url = sofia_glue_get_url_from_contact(tech_pvt->dest, 1))) {
 			url = d_url;
 		} else {
@@ -860,7 +860,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		}
 
 		url_str = url;
-
+		// TIGER
 		if (!tech_pvt->from_str) {
 			const char *sipip;
 			const char *format;
@@ -880,7 +880,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 			tech_pvt->from_str = switch_core_session_sprintf(tech_pvt->session, format, cid_name, use_cid_num, !zstr(cid_num) ? "@" : "", sipip);
 		}
-
+		// TIGER
 		if (from_var) {
 			if (strncasecmp(from_var, "sip:", 4) || strncasecmp(from_var, "sips:", 5)) {
 				use_from_str = switch_core_session_strdup(tech_pvt->session, from_var);
@@ -892,13 +892,13 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		} else {
 			use_from_str = tech_pvt->from_str;
 		}
-
+		// TIGER
 		if (!zstr(tech_pvt->gateway_from_str)) {
 			rpid_domain = switch_core_session_strdup(session, tech_pvt->gateway_from_str);
 		} else if (!zstr(tech_pvt->from_str)) {
 			rpid_domain = switch_core_session_strdup(session, use_from_str);
 		}
-
+		// TIGER
 		sofia_glue_get_url_from_contact(rpid_domain, 0);
 		if ((rpid_domain = strrchr(rpid_domain, '@'))) {
 			rpid_domain++;
@@ -906,7 +906,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 				*p = '\0';
 			}
 		}
-
+		// TIGER
 		if (sofia_test_pflag(tech_pvt->profile, PFLAG_AUTO_NAT)) {
 			if (!zstr(tech_pvt->mparams.remote_ip) && !zstr(tech_pvt->profile->extsipip) && sofia_glue_check_nat(tech_pvt->profile, tech_pvt->mparams.remote_ip)) {
 				rpid_domain = tech_pvt->profile->extsipip;
@@ -914,7 +914,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 				rpid_domain = tech_pvt->profile->sipip;
 			}
 		}
-
+		// TIGER
 		if (!zstr(invite_domain)) {
 			rpid_domain = (char *)invite_domain;
 		}
@@ -922,7 +922,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		if (zstr(rpid_domain)) {
 			rpid_domain = "cluecon.com";
 		}
-
+		// TIGER
 		/*
 		 * Ignore transport chanvar and uri parameter for gateway connections
 		 * since all of them have been already taken care of in mod_sofia.c:sofia_outgoing_channel()
@@ -941,16 +941,16 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 				tech_pvt->transport = SOFIA_TRANSPORT_UDP;
 			}
 		}
-
+		// TIGER
 		if (!zstr(tech_pvt->mparams.remote_ip) && sofia_glue_check_nat(tech_pvt->profile, tech_pvt->mparams.remote_ip)) {
 			tech_pvt->user_via = sofia_glue_create_external_via(session, tech_pvt->profile, tech_pvt->transport);
 		}
-
+		// TIGER
 		if (!sofia_test_pflag(tech_pvt->profile, PFLAG_TLS) && sofia_glue_transport_has_tls(tech_pvt->transport)) {
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(tech_pvt->session), SWITCH_LOG_ERROR, "TLS not supported by profile\n");
 			return SWITCH_STATUS_FALSE;
 		}
-
+		// TIGER
 		if (zstr(tech_pvt->invite_contact)) {
 			const char *contact;
 			if ((contact = switch_channel_get_variable(channel, "sip_contact_user"))) {
@@ -974,7 +974,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 				tech_pvt->invite_contact = sofia_glue_get_profile_url(tech_pvt->profile, tech_pvt->mparams.remote_ip, tech_pvt->transport);
 			}
 		}
-
+		// TIGER
 		url_str = sofia_overcome_sip_uri_weakness(session, url, tech_pvt->transport, SWITCH_TRUE, invite_params, invite_tel_params);
 		invite_contact = sofia_overcome_sip_uri_weakness(session, tech_pvt->invite_contact, tech_pvt->transport, SWITCH_FALSE, invite_contact_params, NULL);
 		from_str = sofia_overcome_sip_uri_weakness(session, invite_from_uri ? invite_from_uri : use_from_str, 0, SWITCH_TRUE, invite_from_params, NULL);
@@ -987,7 +987,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		  or did he just suggest it to make our lives miserable?
 		*/
 		use_from_str = from_str;
-
+		// TIGER
 		if (!switch_stristr("sip:", use_from_str)) {
 			use_from_str = switch_core_session_sprintf(session, "sip:%s", use_from_str);
 		}
@@ -999,7 +999,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 			check_decode(name, session);
 			from_str = switch_core_session_sprintf(session, "\"%s\" <%s>", name, use_from_str);
 		}
-
+		// TIGER
 		if (!(call_id = switch_channel_get_variable(channel, "sip_invite_call_id"))) {
 			if (sofia_test_pflag(tech_pvt->profile, PFLAG_UUID_AS_CALLID)) {
 				call_id = switch_core_session_get_uuid(session);
@@ -1027,7 +1027,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		if (invite_req_uri) {
 			url_str = (char *) invite_req_uri;
 		}
-
+		// TIGER
 		if (url_str) {
 			char *s = NULL;
 			if (!strncasecmp(url_str, "sip:", 4)) {
@@ -1053,7 +1053,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 		switch_channel_set_variable(channel, "sip_to_host", sofia_glue_get_host(to_str, switch_core_session_get_pool(session)));
 		switch_channel_set_variable(channel, "sip_from_host", sofia_glue_get_host(from_str, switch_core_session_get_pool(session)));
-
+		// TIGER
 		if (!(tech_pvt->nh = nua_handle(tech_pvt->profile->nua, NULL,
 										NUTAG_URL(url_str),
 										TAG_IF(call_id, SIPTAG_CALL_ID_STR(call_id)),
@@ -1071,7 +1071,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 			switch_safe_free(d_url);
 			return SWITCH_STATUS_FALSE;
 		}
-
+		// TIGER
 		if (tech_pvt->dest && (strstr(tech_pvt->dest, ";fs_nat") || strstr(tech_pvt->dest, ";received")
 							   || ((val = switch_channel_get_variable(channel, "sip_sticky_contact")) && switch_true(val)))) {
 			sofia_set_flag(tech_pvt, TFLAG_NAT);
@@ -1084,7 +1084,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		if ((val = switch_channel_get_variable(channel, "sip_cid_type"))) {
 			cid_type = sofia_cid_name2type(val);
 		}
-
+		// TIGER
 		if (switch_channel_test_flag(tech_pvt->channel, CF_RECOVERING) && switch_channel_direction(tech_pvt->channel) == SWITCH_CALL_DIRECTION_INBOUND) {
 			if (zstr((use_name = switch_channel_get_variable(tech_pvt->channel, "effective_callee_id_name"))) &&
 				zstr((use_name = switch_channel_get_variable(tech_pvt->channel, "sip_callee_id_name")))) {
@@ -1111,7 +1111,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		}
 
 		check_decode(use_name, session);
-
+		// TIGER
 		switch (cid_type) {
 		case CID_TYPE_PID:
 			if (switch_test_flag(caller_profile, SWITCH_CPF_SCREEN)) {
@@ -1180,7 +1180,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 
 		switch_safe_free(d_url);
-
+		// TIGER
 		if (!(sofia_private = su_alloc(tech_pvt->nh->nh_home, sizeof(*sofia_private)))) {
 			abort();
 		}
@@ -1192,13 +1192,13 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		if (switch_channel_test_flag(tech_pvt->channel, CF_RECOVERING)) {
 			sofia_private->is_call++;
 		}
-
+		// TIGER
 		tech_pvt->sofia_private = sofia_private;
 		switch_copy_string(tech_pvt->sofia_private->uuid_str, switch_core_session_get_uuid(session), sizeof(tech_pvt->sofia_private->uuid_str));
 		tech_pvt->sofia_private->uuid = tech_pvt->sofia_private->uuid_str;
 		nua_handle_bind(tech_pvt->nh, tech_pvt->sofia_private);
 	}
-
+	// TIGER
 	if (tech_pvt->e_dest && sofia_test_pflag(tech_pvt->profile, PFLAG_IN_DIALOG_CHAT)) {
 		char *user = NULL, *host = NULL;
 		char hash_key[256] = "";
@@ -1222,7 +1222,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		}
 		free(e_dest);
 	}
-
+	// TIGER
 	holdstr = sofia_test_flag(tech_pvt, TFLAG_SIP_HOLD) ? hold_char : "";
 
 	if (!switch_channel_get_variable(channel, "sofia_profile_name")) {
@@ -1232,21 +1232,21 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 	}
 
 	extra_headers = sofia_glue_get_extra_headers(channel, SOFIA_SIP_HEADER_PREFIX);
-
+	// TIGER
 	session_timeout = tech_pvt->profile->session_timeout;
-
+	// TIGER
 	if ((val = switch_channel_get_variable(channel, SOFIA_SESSION_TIMEOUT))) {
 		int v_session_timeout = atoi(val);
 		if (v_session_timeout >= 0) {
 			session_timeout = v_session_timeout;
 		}
 	}
-
+	// TIGER
 	if (switch_channel_test_flag(channel, CF_PROXY_MEDIA)) {
 		switch_core_media_proxy_remote_addr(session, NULL);
 		switch_core_media_patch_sdp(tech_pvt->session);
 	}
-
+	// TIGER
 	if (!zstr(tech_pvt->dest)) {
 		dst = sofia_glue_get_destination(tech_pvt->dest);
 
@@ -1258,7 +1258,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 			route = dst->route;
 		}
 	}
-
+	// TIGER
 	if ((val = switch_channel_get_variable(channel, "sip_route_uri"))) {
 		route_uri = switch_core_session_strdup(session, val);
 		route = NULL;
@@ -1270,7 +1270,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		tech_pvt->route_uri = switch_core_session_strdup(tech_pvt->session, route_uri);
 	}
 
-
+		// TIGER
 	if ((val = switch_channel_get_variable(tech_pvt->channel, "sip_invite_cseq"))) {
 		uint32_t callsequence = (uint32_t) strtoul(val, NULL, 10);
 		cseq = sip_cseq_create(tech_pvt->nh->nh_home, callsequence, SIP_METHOD_INVITE);
@@ -1278,15 +1278,15 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 
 
 	switch_channel_clear_flag(channel, CF_MEDIA_ACK);
-
+	// TIGER
 	if (handle_full_from) {
 		tech_pvt->nh->nh_has_invite = 1;
 	}
-
+	// TIGER
 	if ((mp = sofia_media_get_multipart(session, "sip_multipart", tech_pvt->mparams.local_sdp_str, &mp_type))) {
 		sofia_clear_flag(tech_pvt, TFLAG_ENABLE_SOA);
 	}
-
+	// TIGER
 	if ((tech_pvt->session_timeout = session_timeout)) {
 		tech_pvt->session_refresher = switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_OUTBOUND ? nua_local_refresher : nua_remote_refresher;
 		if (sofia_test_pflag(tech_pvt->profile, PFLAG_UPDATE_REFRESHER) || switch_channel_var_true(tech_pvt->channel, "sip_update_refresher")) {
@@ -1301,7 +1301,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 					  tech_pvt->mparams.local_sdp_str ? tech_pvt->mparams.local_sdp_str : "NO SDP PRESENT\n");
 
 
-
+		// TIGER
 	if ((switch_channel_get_private(tech_pvt->channel, "t38_options")) ||
 		((switch_channel_test_flag(tech_pvt->channel, CF_PROXY_MODE) ||
 		  switch_channel_test_flag(tech_pvt->channel, CF_PROXY_MEDIA) )
@@ -1309,7 +1309,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		sofia_clear_flag(tech_pvt, TFLAG_ENABLE_SOA);
 		is_t38 = 1;
     }
-
+	// TIGER FA 发送invite
 	if (sofia_use_soa(tech_pvt)) {
 		nua_invite(tech_pvt->nh,
 				   NUTAG_AUTOANSWER(0),
@@ -1317,7 +1317,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 				   //TAG_IF(!zstr(tech_pvt->mparams.local_sdp_str), NUTAG_AUTOACK(1)),
 				   // The code above is breaking things...... grrr WE need this because we handle our own acks and there are 3pcc cases in there too
 				   NUTAG_AUTOACK(0),
-				   NUTAG_SESSION_TIMER(tech_pvt->session_timeout),
+				   NUTAG_SESSION_TIMER(tech_pvt->session_timeout),//TIGER 这里按照tech_pvt->session_timeout定时发送，问题是如果到点发不出去咋办
 				   NUTAG_SESSION_REFRESHER(tech_pvt->session_refresher),
 				   NUTAG_UPDATE_REFRESH(tech_pvt->update_refresher),
 				   TAG_IF(sofia_test_flag(tech_pvt, TFLAG_RECOVERED), NUTAG_INVITE_TIMER(UINT_MAX)),
@@ -1354,7 +1354,7 @@ switch_status_t sofia_glue_do_invite(switch_core_session_t *session)
 		nua_invite(tech_pvt->nh,
 				   NUTAG_AUTOANSWER(0),
 				   NUTAG_AUTOACK(0),
-				   NUTAG_SESSION_TIMER(tech_pvt->session_timeout),
+				   NUTAG_SESSION_TIMER(tech_pvt->session_timeout),//TIGER 这里按照tech_pvt->session_timeout定时发送，问题是如果到点发不出去咋办
 				   NUTAG_SESSION_REFRESHER(tech_pvt->session_refresher),
 				   NUTAG_UPDATE_REFRESH(tech_pvt->update_refresher),
 				   TAG_IF(sofia_test_flag(tech_pvt, TFLAG_RECOVERED), NUTAG_INVITE_TIMER(UINT_MAX)),

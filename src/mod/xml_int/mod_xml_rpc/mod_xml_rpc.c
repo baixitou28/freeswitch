@@ -56,6 +56,7 @@
  * ad (2)   ms ie may show extra empty lines when serving large txt files as ie has problems rendering content-type "plain/text"
  *
  */
+ //TIGER API 
 #include <switch.h>
 #ifdef _MSC_VER
 #pragma warning(disable:4142)
@@ -812,7 +813,7 @@ static abyss_bool HTTPWriteEnd(TSession * s)
 	s->requestInfo.keepalive = FALSE;
 	return TRUE;
 }
-
+//TIGER API 
 abyss_bool handler_hook(TSession * r)
 {
 	switch_stream_handle_t stream = { 0 };
@@ -841,7 +842,7 @@ abyss_bool handler_hook(TSession * r)
 	stream.data = r;
 	stream.write_function = http_stream_write;
 	stream.raw_write_function = http_stream_raw_write;
-
+//TIGER API WEBAPI TXTAPI XMLAPI
 	if ((command = strstr(uri, "/api/"))) {
 		command += 5;
 		api++;
@@ -1060,7 +1061,7 @@ abyss_bool handler_hook(TSession * r)
 	else {
 		/* content-type and end of http header will be streamed by fs api or http_stream_write */
 	}
-
+//模块管理，额外先处理
 	if (switch_stristr("unload", command) && switch_stristr("mod_xml_rpc", info->query)) {
 		command = "bgapi";
 		api_str = "unload mod_xml_rpc";
@@ -1070,9 +1071,9 @@ abyss_bool handler_hook(TSession * r)
 	} else {
 		api_str = info->query;
 	}
-
+//处理命令行
 	/* TODO (maybe): take "refresh=xxx" out of query as to not confuse fs api commands         */
-
+//TIGER API
 	/* execute actual fs api command                                                            */
 	/* fs api command will write to stream,  calling http_stream_write / http_stream_raw_write	*/
 	/* switch_api_execute will stream INVALID COMMAND before it fails					        */
@@ -1112,12 +1113,12 @@ static xmlrpc_value *freeswitch_api(xmlrpc_env * const envP, xmlrpc_value * cons
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Invalid Request!\n");
 		return NULL;
 	}
-
+//鉴权
 	if (!is_authorized((const TSession *) callInfo, command)) {
 		val = xmlrpc_build_value(envP, "s", "UNAUTHORIZED!");
 		goto end;
 	}
-
+//加载mod_xml_rpc模块额外处理
 	if (switch_stristr("unload", command) && switch_stristr("mod_xml_rpc", arg)) {
 		switch_safe_free(command);
 		switch_safe_free(arg);
@@ -1131,9 +1132,10 @@ static xmlrpc_value *freeswitch_api(xmlrpc_env * const envP, xmlrpc_value * cons
 		command = "bgapi";
 		arg = "reload mod_xml_rpc";
 	}
-
+//处理命令
 	SWITCH_STANDARD_STREAM(stream);
 	if (switch_api_execute(command, arg, NULL, &stream) == SWITCH_STATUS_SUCCESS) {
+//返回xmlrpc 		
 		/* Return our result. */
 		val = xmlrpc_build_value(envP, "s", stream.data);
 		free(stream.data);
@@ -1220,7 +1222,7 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_xml_rpc_runtime)
 	xmlrpc_env_init(&env);
 
 	globals.registryP = xmlrpc_registry_new(&env);
-
+//注册函数
 	/* TODO why twice and why add_method for freeswitch.api and add_method2 for freeswitch.management ? */
     xmlrpc_registry_add_method2(&env, globals.registryP, "freeswitch.api", &freeswitch_api, NULL, NULL, NULL);
     xmlrpc_registry_add_method2(&env, globals.registryP, "freeswitch_api", &freeswitch_api, NULL, NULL, NULL);
@@ -1228,14 +1230,14 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_xml_rpc_runtime)
     xmlrpc_registry_add_method(&env, globals.registryP, NULL, "freeswitch_management", &freeswitch_man, NULL);
 
 	MIMETypeInit();
-
+//
 	for (hi = switch_core_mime_index(); hi; hi = switch_core_hash_next(&hi)) {
 		switch_core_hash_this(hi, &var, NULL, &val);
 		if (var && val) {
 			MIMETypeAdd((char *) val, (char *) var);
 		}
 	}
-
+//创建日志文件
 	switch_snprintf(logfile, sizeof(logfile), "%s%s%s", SWITCH_GLOBAL_dirs.log_dir, SWITCH_PATH_SEPARATOR, "freeswitch_http.log");
 	ServerCreate(&globals.abyssServer, "XmlRpcServer", globals.port, SWITCH_GLOBAL_dirs.htdocs_dir, logfile);
 
@@ -1251,8 +1253,9 @@ SWITCH_MODULE_RUNTIME_FUNCTION(mod_xml_rpc_runtime)
 
 		return SWITCH_STATUS_TERM;
 	}
-
+//TIGER API 主要函数handler_hook
 	ServerAddHandler(&globals.abyssServer, handler_hook);
+//这个鉴权和verto的区别?
 	ServerAddHandler(&globals.abyssServer, auth_hook);
 	ServerSetKeepaliveTimeout(&globals.abyssServer, 5);
 

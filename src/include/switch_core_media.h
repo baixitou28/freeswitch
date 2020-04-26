@@ -188,7 +188,9 @@ static inline const char *switch_media_type2str(switch_media_type_t type)
 	}
 }
 
-
+//TIGER switch_media_handle  跨平台media函数
+//TIGER switch_core_session_ 跨平台函数
+//TIGER switch_core_media__ 跨平台函数
 SWITCH_DECLARE(switch_status_t) switch_media_handle_create(switch_media_handle_t **smhp, switch_core_session_t *session, switch_core_media_params_t *params);
 SWITCH_DECLARE(void) switch_media_handle_destroy(switch_core_session_t *session);
 SWITCH_DECLARE(switch_media_handle_t *) switch_core_session_get_media_handle(switch_core_session_t *session);

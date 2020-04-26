@@ -1076,7 +1076,7 @@ static void *SWITCH_THREAD_FUNC console_thread(switch_thread_t *thread, void *ob
 				}
 				assert(cmd != NULL);
 				history(myhistory, &ev, H_ENTER, line);
-				running = switch_console_process(cmd);
+				running = switch_console_process(cmd);//执行cmd命令
 				el_deletestr(el, strlen(foo) + 1);
 				memset(foo, 0, strlen(foo));
 				free(cmd);
@@ -1097,7 +1097,7 @@ static unsigned char complete(EditLine * el, int ch)
 	return switch_console_complete(lf->buffer, lf->cursor, switch_core_get_console(), NULL, NULL);
 }
 
-
+//TIGER console
 SWITCH_DECLARE(void) switch_console_loop(void)
 {
 	switch_thread_t *thread;
@@ -1176,7 +1176,7 @@ SWITCH_DECLARE(void) switch_console_loop(void)
 	switch_threadattr_create(&thd_attr, pool);
 	switch_threadattr_detach_set(thd_attr, 1);
 	switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);
-	switch_thread_create(&thread, thd_attr, console_thread, pool, pool);
+	switch_thread_create(&thread, thd_attr, console_thread, pool, pool);//TIGER 在这里启动console thread
 
 	while (running) {
 		int32_t arg = 0;

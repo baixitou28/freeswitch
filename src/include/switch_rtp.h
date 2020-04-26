@@ -169,7 +169,7 @@ typedef enum { /* FMT Values for PSFB Payload Types http://www.iana.org/assignme
 } rtcp_psfb_t;
 
 
-
+//TIGER switch_rtp_ rtp¥¶¿Ì
 SWITCH_DECLARE(switch_status_t) switch_rtp_add_crypto_key(switch_rtp_t *rtp_session, switch_rtp_crypto_direction_t direction, uint32_t index, switch_secure_settings_t *ssec);
 
 ///\defgroup rtp RTP (RealTime Transport Protocol)

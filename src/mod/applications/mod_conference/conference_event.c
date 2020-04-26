@@ -41,7 +41,7 @@
  */
 #include <mod_conference.h>
 
-
+//Tiger 处理会议的json字符串
 static cJSON *get_canvas_info(mcu_canvas_t *canvas)
 {
 	cJSON *obj = cJSON_CreateObject();

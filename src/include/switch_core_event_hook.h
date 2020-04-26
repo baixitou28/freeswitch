@@ -33,7 +33,7 @@
 
 #include <switch.h>
 SWITCH_BEGIN_EXTERN_C typedef struct switch_io_event_hooks switch_io_event_hooks_t;
-
+//TIGER switch_io_event_hook_  跨平台函数
 typedef struct switch_io_event_hook_outgoing_channel switch_io_event_hook_outgoing_channel_t;
 typedef struct switch_io_event_hook_receive_message switch_io_event_hook_receive_message_t;
 typedef struct switch_io_event_hook_receive_event switch_io_event_hook_receive_event_t;
@@ -236,7 +236,7 @@ extern switch_io_event_hooks_t switch_core_session_get_event_hooks(switch_core_s
 		}																\
 		return SWITCH_STATUS_FALSE;										\
 	}
-
+//TIGER switch_io_event_hook_  事件
 
 NEW_HOOK_DECL_ADD_P(outgoing_channel);
 NEW_HOOK_DECL_ADD_P(receive_message);

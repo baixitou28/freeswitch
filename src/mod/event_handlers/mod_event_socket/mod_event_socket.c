@@ -2289,7 +2289,7 @@ static switch_status_t parse_command(listener_t *listener, switch_event_t **even
 			if ((arg_copy = strchr(api_copy, ' '))) {
 				*arg_copy++ = '\0';
 			}
-
+//tiger  api ½âÎöÃ÷ĞÇ
 			ok = auth_api_command(listener, api_copy, arg_copy);
 			free(api_copy);
 

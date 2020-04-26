@@ -85,7 +85,7 @@ SWITCH_DECLARE(int) switch_thread_equal(switch_thread_id_t tid1, switch_thread_i
  * @see apr_pool_destroy()
  */
 SWITCH_DECLARE(void) switch_pool_clear(switch_memory_pool_t *pool);
-
+//TIGER switch_xxx  跨平台apr函数
 /** @} */
 
 /**
@@ -810,7 +810,7 @@ SWITCH_DECLARE(switch_status_t) switch_queue_trypush(switch_queue_t *queue, void
 SWITCH_DECLARE(switch_status_t) switch_file_open(switch_file_t ** newf, const char *fname, int32_t flag, switch_fileperms_t perm,
 												 switch_memory_pool_t *pool);
 
-
+//tiger 跨平台文件操作
 SWITCH_DECLARE(switch_status_t) switch_file_seek(switch_file_t *thefile, switch_seek_where_t where, int64_t *offset);
 
 
@@ -879,7 +879,7 @@ SWITCH_DECLARE(switch_status_t) switch_file_mktemp(switch_file_t ** thefile, cha
 SWITCH_DECLARE(switch_size_t) switch_file_get_size(switch_file_t *thefile);
 
 SWITCH_DECLARE(switch_status_t) switch_file_exists(const char *filename, switch_memory_pool_t *pool);
-
+//tiger 跨平台目录操作
 SWITCH_DECLARE(switch_status_t) switch_directory_exists(const char *dirname, switch_memory_pool_t *pool);
 
 /**
@@ -970,7 +970,7 @@ SWITCH_DECLARE(switch_status_t) switch_threadattr_detach_set(switch_threadattr_t
  */
 SWITCH_DECLARE(switch_status_t) switch_thread_create(switch_thread_t ** new_thread, switch_threadattr_t *attr,
 													 switch_thread_start_t func, void *data, switch_memory_pool_t *cont);
-
+//tiger 跨平台线程
 /** @} */
 
 /**
@@ -1045,7 +1045,7 @@ SWITCH_DECLARE(switch_status_t) switch_thread_create(switch_thread_t ** new_thre
  * @param pool The pool to use
  */
 SWITCH_DECLARE(switch_status_t) switch_socket_create(switch_socket_t ** new_sock, int family, int type, int protocol, switch_memory_pool_t *pool);
-
+//tiger 跨平台socket
 /**
  * Shutdown either reading, writing, or both sides of a socket.
  * @param sock The socket to close
@@ -1258,7 +1258,7 @@ SWITCH_DECLARE(switch_status_t) switch_socket_timeout_get(switch_socket_t *sock,
  * </PRE>
  */
 SWITCH_DECLARE(switch_status_t) switch_socket_timeout_set(switch_socket_t *sock, switch_interval_time_t t);
-
+//tiger 跨平台mcast
 /**
  * Join a Multicast Group
  * @param sock The socket to join a multicast group
@@ -1394,7 +1394,7 @@ SWITCH_DECLARE(switch_status_t) switch_pollset_remove(switch_pollset_t *pollset,
  *         socket has been signalled, or the timeout has expired.
  */
 SWITCH_DECLARE(switch_status_t) switch_poll(switch_pollfd_t *aprset, int32_t numsock, int32_t *nsds, switch_interval_time_t timeout);
-
+//tiger 跨平台poll
 /**
  * Block for activity on the descriptor(s) in a pollset
  * @param pollset The pollset to use

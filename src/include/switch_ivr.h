@@ -79,7 +79,7 @@ typedef struct switch_unicast_conninfo switch_unicast_conninfo_t;
  *	building blocks for a higher level IVR interface.
  * @{
  */
-
+//TIGER switch_ivr_  ivrº¯Êý
 SWITCH_DECLARE(switch_status_t) switch_ivr_deactivate_unicast(switch_core_session_t *session);
 SWITCH_DECLARE(switch_status_t) switch_ivr_activate_unicast(switch_core_session_t *session,
 															char *local_ip,

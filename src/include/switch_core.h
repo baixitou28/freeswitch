@@ -260,7 +260,7 @@ static inline char *switch_must_strdup(const char *_s)
 ///\ingroup core1
 ///\{
 
-
+//TIGER switch_core_ 函数定义
 SWITCH_DECLARE(void) switch_core_screen_size(int *x, int *y);
 SWITCH_DECLARE(void) switch_core_session_sched_heartbeat(switch_core_session_t *session, uint32_t seconds);
 SWITCH_DECLARE(void) switch_core_session_unsched_heartbeat(switch_core_session_t *session);
@@ -649,7 +649,7 @@ SWITCH_DECLARE(void *) switch_core_memory_pool_get_data(switch_memory_pool_t *po
 
 
 /*!
-  \brief Start the session's state machine
+  \brief Start the session's state machine 状态机
   \param session the session on which to start the state machine
 */
 SWITCH_DECLARE(void) switch_core_session_run(_In_ switch_core_session_t *session);

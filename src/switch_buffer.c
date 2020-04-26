@@ -230,7 +230,7 @@ SWITCH_DECLARE(switch_size_t) switch_buffer_read_loop(switch_buffer_t *buffer, v
 	}
 	return len;
 }
-
+//tiger 这里只是简单的将buffer 数据copy 到data
 SWITCH_DECLARE(switch_size_t) switch_buffer_read(switch_buffer_t *buffer, void *data, switch_size_t datalen)
 {
 	switch_size_t reading = 0;

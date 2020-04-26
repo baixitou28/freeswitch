@@ -41,7 +41,7 @@
  */
 #include <mod_conference.h>
 
-
+//TIGER 会议中播放文件
 switch_status_t conference_file_close(conference_obj_t *conference, conference_file_node_t *node)
 {
 	switch_event_t *event;

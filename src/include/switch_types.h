@@ -41,7 +41,7 @@
 #include <switch.h>
 #include <switch_json.h>
 #include <switch_vpx.h>
-
+//TIGER SWITCH_  类型
 SWITCH_BEGIN_EXTERN_C
 #define SWITCH_ENT_ORIGINATE_DELIM ":_:"
 #define SWITCH_BLANK_STRING ""
@@ -1328,21 +1328,21 @@ CS_REPORTING - Channel is ready to collect call detail.
 CS_DESTROY      - Channel is ready to be destroyed and out of the state machine.
 </pre>
  */
-typedef enum {
-	CS_NEW,
-	CS_INIT,
-	CS_ROUTING,
-	CS_SOFT_EXECUTE,
-	CS_EXECUTE,
-	CS_EXCHANGE_MEDIA,
-	CS_PARK,
-	CS_CONSUME_MEDIA,
-	CS_HIBERNATE,
-	CS_RESET,
-	CS_HANGUP,
-	CS_REPORTING,
-	CS_DESTROY,
-	CS_NONE
+typedef enum {//看注释
+	CS_NEW,//新建，0，默认是这个
+	CS_INIT,//已初始化
+	CS_ROUTING,//路由，找一个分机来执行
+	CS_SOFT_EXECUTE,//准备从第三方来执行
+	CS_EXECUTE,//执行dialplan
+	CS_EXCHANGE_MEDIA,//和另外的channel交换数据
+	CS_PARK,//PARK等待下一步
+	CS_CONSUME_MEDIA,//消费并丢弃
+	CS_HIBERNATE,//休眠
+	CS_RESET,//重置
+	CS_HANGUP,//挂起，并准备结束
+	CS_REPORTING,//收集呼叫信息 准备CDR
+	CS_DESTROY,//准备销毁，并退出状态机
+	CS_NONE//无
 } switch_channel_state_t;
 
 typedef enum {
@@ -1615,7 +1615,7 @@ SFF_WAIT_KEY_FRAME = (1 << 12) - Need a key from before could decode, or force g
  */
 typedef enum {
 	SFF_NONE = 0,
-	SFF_CNG = (1 << 0),
+	SFF_CNG = (1 << 0),//SFF:switch_frame_flag_t
 	SFF_RAW_RTP = (1 << 1),
 	SFF_RTP_HEADER = (1 << 2),
 	SFF_PLC = (1 << 3),
@@ -2246,11 +2246,11 @@ typedef struct switch_event_node switch_event_node_t;
 typedef struct switch_loadable_module switch_loadable_module_t;
 typedef struct switch_frame switch_frame_t;
 typedef struct switch_rtcp_frame switch_rtcp_frame_t;
-typedef struct switch_channel switch_channel_t;
+typedef struct switch_channel switch_channel_t;//重要
 typedef struct switch_sql_queue_manager switch_sql_queue_manager_t;
 typedef struct switch_file_handle switch_file_handle_t;
-typedef struct switch_core_session switch_core_session_t;
-typedef struct switch_caller_profile switch_caller_profile_t;
+typedef struct switch_core_session switch_core_session_t;//重要
+typedef struct switch_caller_profile switch_caller_profile_t;//解析后的sip信息
 typedef struct switch_caller_extension switch_caller_extension_t;
 typedef struct switch_caller_application switch_caller_application_t;
 typedef struct switch_state_handler_table switch_state_handler_table_t;
@@ -2264,7 +2264,7 @@ typedef struct switch_codec_fmtp switch_codec_fmtp_t;
 typedef struct switch_odbc_handle switch_odbc_handle_t;
 typedef struct switch_pgsql_handle switch_pgsql_handle_t;
 typedef struct switch_pgsql_result switch_pgsql_result_t;
-
+//TIGER 这里的handler 相当于纯虚函数
 typedef struct switch_io_routines switch_io_routines_t;
 typedef struct switch_speech_handle switch_speech_handle_t;
 typedef struct switch_asr_handle switch_asr_handle_t;
@@ -2303,7 +2303,7 @@ struct switch_console_callback_match {
 	int dynamic;
 };
 typedef struct switch_console_callback_match switch_console_callback_match_t;
-
+//TIGER switch_  回调函数
 typedef void (*switch_media_bug_exec_cb_t)(switch_media_bug_t *bug, void *user_data);
 
 typedef switch_status_t (*switch_core_video_thread_callback_func_t) (switch_core_session_t *session, switch_frame_t *frame, void *user_data);

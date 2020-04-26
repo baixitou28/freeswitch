@@ -90,7 +90,7 @@ typedef struct switch_hashtable_iterator switch_hashtable_iterator_t;
  * @param   key_eq_fn       function for determining key equality
  * @return                  newly created hashtable or NULL on failure
  */
-
+//TIGER switch_hashtable_ ¿çÆ½Ì¨º¯Êý
 SWITCH_DECLARE(switch_status_t)
 switch_create_hashtable(switch_hashtable_t **hp, unsigned int minsize,
                  unsigned int (*hashfunction) (void*),

@@ -201,7 +201,7 @@ void WINAPI service_main(DWORD numArgs, char **args)
 	SetServiceStatus(hStatus, &status);
 
 	switch_core_set_globals();
-
+	////TIGER 重要的初始化
 	/* attempt to initialize freeswitch and load modules */
 	if (switch_core_init_and_modload(flags, SWITCH_FALSE, &err) != SWITCH_STATUS_SUCCESS) {
 		/* freeswitch did not start successfully */
@@ -474,7 +474,7 @@ static switch_bool_t is_option(const char *p)
 	return (p[0] == '-');
 }
 
-
+//TIGER000 程序入口
 /* the main application entry point */
 int main(int argc, char *argv[])
 {
@@ -518,11 +518,11 @@ int main(int argc, char *argv[])
 	switch_bool_t waste = SWITCH_FALSE;
 #endif
 #endif
-
+//n个参数
 	for (x = 0; x < argc; x++) {
 		local_argv[x] = argv[x];
 	}
-
+//n个环境变量
 	if ((opts = getenv("FREESWITCH_OPTS"))) {
 		strncpy(opts_str, opts, sizeof(opts_str) - 1);
 		i = switch_separate_string(opts_str, ' ', arg_argv, (sizeof(arg_argv) / sizeof(arg_argv[0])));
@@ -534,7 +534,7 @@ int main(int argc, char *argv[])
 	if (local_argv[0] && strstr(local_argv[0], "freeswitchd")) {
 		nc = SWITCH_TRUE;
 	}
-
+//参数解析
 	for (x = 1; x < local_argc; x++) {
 
 		if (switch_strlen_zero(local_argv[x]))
@@ -745,7 +745,7 @@ int main(int argc, char *argv[])
 			do_kill = SWITCH_TRUE;
 		}
 
-		else if (!strcmp(local_argv[x], "-nc")) {
+		else if (!strcmp(local_argv[x], "-nc")) {//tiger 常用参数
 			nc = SWITCH_TRUE;
 		}
 #ifndef WIN32
@@ -1024,7 +1024,7 @@ int main(int argc, char *argv[])
 	if (do_kill) {
 		return freeswitch_kill_background();
 	}
-
+//apr 初始化
 	if (apr_initialize() != SWITCH_STATUS_SUCCESS) {
 		fprintf(stderr, "FATAL ERROR! Could not initialize APR\n");
 		return 255;
@@ -1079,7 +1079,7 @@ int main(int argc, char *argv[])
 #ifdef WIN32
 		FreeConsole();
 #else
-		if (!nf) {
+		if (!nf) {//初始化
 			daemonize(do_wait ? fds : NULL);
 		}
 #endif
@@ -1123,7 +1123,7 @@ int main(int argc, char *argv[])
 #else
 	if (win32_service) {
 		/* Attempt to start service */
-		SERVICE_TABLE_ENTRY dispatchTable[] = {
+		SERVICE_TABLE_ENTRY dispatchTable[] = {//WINDOWS的启动方法
 			{service_name, &service_main}
 			,
 			{NULL, NULL}
@@ -1147,18 +1147,18 @@ int main(int argc, char *argv[])
 	switch_snprintf(pid_path, sizeof(pid_path), "%s%s%s", SWITCH_GLOBAL_dirs.run_dir, SWITCH_PATH_SEPARATOR, pfile);
 	switch_snprintf(pid_buffer, sizeof(pid_buffer), "%d", pid);
 	pid_len = strlen(pid_buffer);
-
+//创建pool
 	apr_pool_create(&pool, NULL);
 
 	switch_dir_make_recursive(SWITCH_GLOBAL_dirs.run_dir, SWITCH_DEFAULT_DIR_PERMS, pool);
-
+//是否已存在
 	if (switch_file_open(&fd, pid_path, SWITCH_FOPEN_READ, SWITCH_FPROT_UREAD | SWITCH_FPROT_UWRITE, pool) == SWITCH_STATUS_SUCCESS) {
 
 		old_pid_len = sizeof(old_pid_buffer) -1;
 		switch_file_read(fd, old_pid_buffer, &old_pid_len);
 		switch_file_close(fd);
 	}
-
+//创建
 	if (switch_file_open(&fd,
 						 pid_path,
 						 SWITCH_FOPEN_WRITE | SWITCH_FOPEN_CREATE | SWITCH_FOPEN_TRUNCATE,
@@ -1175,9 +1175,9 @@ int main(int argc, char *argv[])
 		}
 		return 255;
 	}
-
+//写pid
 	switch_file_write(fd, pid_buffer, &pid_len);
-
+//加载模块
 	if (switch_core_init_and_modload(flags, nc ? SWITCH_FALSE : SWITCH_TRUE, &err) != SWITCH_STATUS_SUCCESS) {
 		fprintf(stderr, "Cannot Initialize [%s]\n", err);
 		return 255;
@@ -1204,9 +1204,9 @@ int main(int argc, char *argv[])
 	if (nc && nf) {
 		signal(SIGINT, handle_SIGILL);
 	}
-
-	switch_core_runtime_loop(nc);
-
+//主循环
+	switch_core_runtime_loop(nc);//是个1秒秒空循环
+//释放资源
 	destroy_status = switch_core_destroy();
 
 	switch_file_close(fd);

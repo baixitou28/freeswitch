@@ -1194,7 +1194,7 @@ SWITCH_DECLARE(void) switch_core_runtime_loop(int bg)
 #endif
 	} else {
 		/* wait for console input */
-		switch_console_loop();
+		switch_console_loop();//如果前台运行，则不停等待用户输入
 	}
 }
 
@@ -1808,7 +1808,7 @@ SWITCH_DECLARE(int) switch_core_test_flag(int flag)
 	return switch_test_flag((&runtime), flag);
 }
 
-
+//TIGER 重要初始化函数
 SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switch_bool_t console, const char **err)
 {
 	switch_uuid_t uuid;
@@ -1862,12 +1862,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 #endif
 
 	if (!runtime.cpu_count) runtime.cpu_count = 1;
-
+//数据库
 	if (sqlite3_initialize() != SQLITE_OK) {
 		*err = "FATAL ERROR! Could not initialize SQLite\n";
 		return SWITCH_STATUS_MEMERR;
 	}
-
+//APR
 	/* INIT APR and Create the pool context */
 	if (apr_initialize() != SWITCH_STATUS_SUCCESS) {
 		*err = "FATAL ERROR! Could not initialize APR\n";
@@ -1879,7 +1879,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 		return SWITCH_STATUS_MEMERR;
 	}
 	switch_assert(runtime.memory_pool != NULL);
-
+//创建目录
 	switch_dir_make_recursive(SWITCH_GLOBAL_dirs.base_dir, SWITCH_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	switch_dir_make_recursive(SWITCH_GLOBAL_dirs.mod_dir, SWITCH_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	switch_dir_make_recursive(SWITCH_GLOBAL_dirs.conf_dir, SWITCH_DEFAULT_DIR_PERMS, runtime.memory_pool);
@@ -1895,7 +1895,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 	switch_dir_make_recursive(SWITCH_GLOBAL_dirs.sounds_dir, SWITCH_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	switch_dir_make_recursive(SWITCH_GLOBAL_dirs.temp_dir, SWITCH_DEFAULT_DIR_PERMS, runtime.memory_pool);
 	switch_dir_make_recursive(SWITCH_GLOBAL_dirs.certs_dir, SWITCH_DEFAULT_DIR_PERMS, runtime.memory_pool);
-
+//初始化锁muxtex lock hash
 	switch_mutex_init(&runtime.uuid_mutex, SWITCH_MUTEX_NESTED, runtime.memory_pool);
 
 	switch_mutex_init(&runtime.throttle_mutex, SWITCH_MUTEX_NESTED, runtime.memory_pool);
@@ -1930,7 +1930,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 	in.s_addr = mask;
 	switch_core_set_variable("local_mask_v4", inet_ntoa(in));
 
-
+//设置全局变量
 	switch_find_local_ip(guess_ip, sizeof(guess_ip), NULL, AF_INET6);
 	switch_core_set_variable("local_ip_v6", guess_ip);
 	switch_core_set_variable("base_dir", SWITCH_GLOBAL_dirs.base_dir);
@@ -1968,7 +1968,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 	if (switch_test_flag((&runtime), SCF_USE_AUTO_NAT)) {
 		switch_nat_init(runtime.memory_pool, switch_test_flag((&runtime), SCF_USE_NAT_MAPPING));
 	}
-
+//日志
 	switch_log_init(runtime.memory_pool, runtime.colorize_console);
 
 	runtime.tipping_point = 0;
@@ -1985,11 +1985,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_init(switch_core_flag_t flags, switc
 		*err = "Error activating database";
 		return SWITCH_STATUS_FALSE;
 	}
+//media	
 	switch_core_media_init();
 	switch_scheduler_task_thread_start();
-
+//NAT
 	switch_nat_late_init();
-
+//RTP
 	switch_rtp_init(runtime.memory_pool);
 
 	runtime.running = 1;
@@ -2377,7 +2378,7 @@ SWITCH_DECLARE(const char *) switch_core_banner(void)
 			"\n");
 }
 
-
+//TIGER010 重要入口
 SWITCH_DECLARE(switch_status_t) switch_core_init_and_modload(switch_core_flag_t flags, switch_bool_t console, const char **err)
 {
 	switch_event_t *event;
@@ -2386,7 +2387,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_init_and_modload(switch_core_flag_t 
 	const char *use = NULL;
 #include "cc.h"
 
-
+//01. tiger switch_core_init
 	if (switch_core_init(flags, console, err) != SWITCH_STATUS_SUCCESS) {
 		return SWITCH_STATUS_GENERR;
 	}
@@ -2398,12 +2399,13 @@ SWITCH_DECLARE(switch_status_t) switch_core_init_and_modload(switch_core_flag_t 
 
 	runtime.runlevel++;
 	runtime.events_use_dispatch = 1;
-
+//tiger 信号
 	switch_core_set_signal_handlers();
+//tiger 网络
 	switch_load_network_lists(SWITCH_FALSE);
 
 	switch_msrp_init();
-
+//tiger 模块加载 switch_loadable_module_init
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CONSOLE, "Bringing up environment.\n");
 	switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CONSOLE, "Loading Modules.\n");
 	if (switch_loadable_module_init(SWITCH_TRUE) != SWITCH_STATUS_SUCCESS) {
@@ -2417,7 +2419,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_init_and_modload(switch_core_flag_t 
 	switch_load_core_config("post_load_switch.conf");
 
 	switch_core_set_signal_handlers();
-
+//tiger 事件
 	if (switch_event_create(&event, SWITCH_EVENT_STARTUP) == SWITCH_STATUS_SUCCESS) {
 		switch_event_add_header(event, SWITCH_STACK_BOTTOM, "Event-Info", "System Ready");
 		switch_event_fire(&event);

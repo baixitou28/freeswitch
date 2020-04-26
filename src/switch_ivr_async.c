@@ -696,36 +696,37 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_dmachine_clear(switch_ivr_dmachine_t 
 }
 
 
-
+//TIGER IVR
+//TIGER ECHO
 SWITCH_DECLARE(switch_status_t) switch_ivr_session_echo(switch_core_session_t *session, switch_input_args_t *args)
 {
 	switch_status_t status;
 	switch_frame_t *read_frame;
 	switch_channel_t *channel = switch_core_session_get_channel(session);
-
+//状态对吗
 	if (switch_channel_pre_answer(channel) != SWITCH_STATUS_SUCCESS) {
 		return SWITCH_STATUS_FALSE;
 	}
-
+//echo 有参数吗? -->有
 	arg_recursion_check_start(args);
-	
+//视频	
 	if (switch_channel_var_true(channel, "echo_decode_video")) {
 		switch_channel_set_flag_recursive(channel, CF_VIDEO_DECODED_READ);
 	}
-
+//音频
 	if (switch_channel_var_true(channel, "echo_decode_audio")) {
 		switch_core_session_raw_read(session);
 	}
 
 	switch_channel_set_flag(channel, CF_VIDEO_ECHO);
 	switch_channel_set_flag(channel, CF_TEXT_ECHO);
-
+//不停处理，知道channel停止
 	while (switch_channel_ready(channel)) {
-		status = switch_core_session_read_frame(session, &read_frame, SWITCH_IO_FLAG_NONE, 0);
+		status = switch_core_session_read_frame(session, &read_frame, SWITCH_IO_FLAG_NONE, 0);//读取一帧
 		if (!SWITCH_READ_ACCEPTABLE(status)) {
 			break;
 		}
-
+//响应session的事件
 		switch_ivr_parse_all_events(session);
 
 		if (args && (args->input_callback || args->buf || args->buflen)) {
@@ -740,6 +741,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_session_echo(switch_core_session_t *s
 					status = SWITCH_STATUS_BREAK;
 					break;
 				}
+//DTMF处理				
 				switch_channel_dequeue_dtmf(channel, &dtmf);
 				if (args->input_callback) {
 					status = args->input_callback(session, (void *) &dtmf, SWITCH_INPUT_TYPE_DTMF, args->buf, args->buflen);
@@ -751,7 +753,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_session_echo(switch_core_session_t *s
 
 			if (args->input_callback) {
 				switch_event_t *event = NULL;
-
+//只是dequeue最近的一个event
 				if (switch_core_session_dequeue_event(session, &event, SWITCH_FALSE) == SWITCH_STATUS_SUCCESS) {
 					status = args->input_callback(session, event, SWITCH_INPUT_TYPE_EVENT, args->buf, args->buflen);
 					switch_event_destroy(&event);
@@ -759,18 +761,18 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_session_echo(switch_core_session_t *s
 			}
 
 			if (status != SWITCH_STATUS_SUCCESS) {
-				break;
+				break;//状态不对，退出
 			}
 		}
-
+//写
 		switch_core_session_write_frame(session, read_frame, SWITCH_IO_FLAG_NONE, 0);
-
+//
 		if (switch_channel_test_flag(channel, CF_BREAK)) {
 			switch_channel_clear_flag(channel, CF_BREAK);
 			break;
 		}
 	}
-
+//恢复状态
 	if (switch_channel_var_true(channel, "echo_decode_video")) {
 		switch_channel_clear_flag_recursive(channel, CF_VIDEO_DECODED_READ);
 	}
@@ -1270,7 +1272,7 @@ static void *SWITCH_THREAD_FUNC recording_thread(switch_thread_t *thread, void *
 
 	return NULL;
 }
-
+//tiger record 
 static switch_bool_t record_callback(switch_media_bug_t *bug, void *user_data, switch_abc_type_t type)
 {
 	switch_core_session_t *session = switch_core_media_bug_get_session(bug);
@@ -2531,7 +2533,7 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_eavesdrop_session(switch_core_session
 
 	return status;
 }
-
+//TIGER record1
 SWITCH_DECLARE(switch_status_t) switch_ivr_record_session(switch_core_session_t *session, char *file, uint32_t limit, switch_file_handle_t *fh)
 {
 	switch_channel_t *channel = switch_core_session_get_channel(session);
@@ -2899,7 +2901,8 @@ SWITCH_DECLARE(switch_status_t) switch_ivr_record_session(switch_core_session_t 
 	}
 
 	rh->hangup_on_error = hangup_on_error;
-
+//tiger record 注册
+//tiger bug
 	if ((status = switch_core_media_bug_add(session, "session_record", file,
 											record_callback, rh, to, flags, &bug)) != SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Error adding media bug for file %s\n", file);

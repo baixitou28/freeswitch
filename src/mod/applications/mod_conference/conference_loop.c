@@ -799,7 +799,7 @@ static void stop_talking_handler(conference_member_t *member)
 
 	
 }
-
+//TIGER 重要!!! 会议，读输入某个channel，一个用户一个线程
 /* marshall frames from the call leg to the conference thread for muxing to other call legs */
 void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *obj)
 {
@@ -821,12 +821,12 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 
 	conference_utils_member_clear_flag_locked(member, MFLAG_TALKING);
 
-	channel = switch_core_session_get_channel(session);
+	channel = switch_core_session_get_channel(session);//session和channel的关系
 
-	switch_core_session_get_read_impl(session, &member->read_impl);
+	switch_core_session_get_read_impl(session, &member->read_impl);//编解码
 
-	switch_channel_audio_sync(channel);
-
+	switch_channel_audio_sync(channel);//如果。。。播放录音
+	//计算成员和会议中间的换算比
 	flush_len = switch_samples_per_packet(member->conference->rate, member->conference->interval) * 2 * member->conference->channels * (500 / member->conference->interval);
 
 	/* As long as we have a valid read, feed that data into an input buffer where the conference thread will take it
@@ -834,13 +834,13 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 
 	while (conference_utils_member_test_flag(member, MFLAG_RUNNING) && switch_channel_ready(channel)) {
 
-		if (switch_channel_ready(channel) && switch_channel_test_app_flag(channel, CF_APP_TAGGED)) {
-			switch_yield(100000);
-			continue;
+		if (switch_channel_ready(channel) && switch_channel_test_app_flag(channel, CF_APP_TAGGED)) {//判断n个状态
+			switch_yield(100000);//虽然准备好但被标记为CF_APP_TAGGED，等待100ms
+			continue;//继续循环，//为什么CF_APP_TAGGED循环，不知道
 		}
 
 		/* Read a frame. */
-		status = switch_core_session_read_frame(session, &read_frame, SWITCH_IO_FLAG_NONE, 0);
+		status = switch_core_session_read_frame(session, &read_frame, SWITCH_IO_FLAG_NONE, 0);//tiger 会议中读一帧
 
 		switch_mutex_lock(member->read_mutex);
 
@@ -911,7 +911,7 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 				break;
 			}
 
-			member->loop_loop = 1;
+			member->loop_loop = 1;//TIGER 因为重置reset了，允许再次进入loop
 
 			goto do_continue;
 		}
@@ -1286,7 +1286,7 @@ void conference_loop_launch_input(conference_member_t *member, switch_memory_poo
 		conference_utils_member_clear_flag_locked(member, MFLAG_ITHREAD);
 	}
 }
-
+//tiger080 最重要 输出
 /* marshall frames from the conference (or file or tts output) to the call leg */
 /* NB. this starts the input thread after some initial setup for the call leg */
 void conference_loop_output(conference_member_t *member)
@@ -1314,18 +1314,18 @@ void conference_loop_output(conference_member_t *member)
 	interval = read_impl.microseconds_per_packet / 1000;
 	samples = switch_samples_per_packet(member->conference->rate, interval);
 	//csamples = samples;
-	tsamples = real_read_impl.samples_per_packet;
+	tsamples = real_read_impl.samples_per_packet;//每个packet多少次采样
 	low_count = 0;
-	bytes = samples * 2 * member->conference->channels;
+	bytes = samples * 2 * member->conference->channels;//字节数
 	call_list = NULL;
 	cp = NULL;
 
-	member->loop_loop = 0;
+	member->loop_loop = 0;//为什么设置为0？ ==>已经进入loop，只有退出的可能了，不可能再重新进入这里了
 
 	switch_assert(member->conference != NULL);
-
+	//每个包发多少长度
 	flush_len = switch_samples_per_packet(member->conference->rate, member->conference->interval) * 2 * member->conference->channels * (500 / member->conference->interval);
-
+	//定时器
 	if (switch_core_timer_init(&timer, member->conference->timer_name, interval, tsamples, NULL) != SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member->session), SWITCH_LOG_ERROR, "Timer Setup Failed.  Conference Cannot Start\n");
 		return;
@@ -1334,13 +1334,13 @@ void conference_loop_output(conference_member_t *member)
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member->session), SWITCH_LOG_DEBUG, "Setup timer %s success interval: %u  samples: %u from codec %s\n",
 					  member->conference->timer_name, interval, tsamples, real_read_impl.iananame);
 
-
+	//默认BUFFER 8192
 	write_frame.data = data = switch_core_session_alloc(member->session, SWITCH_RECOMMENDED_BUFFER_SIZE);
 	write_frame.buflen = SWITCH_RECOMMENDED_BUFFER_SIZE;
 
-
+	//编码
 	write_frame.codec = &member->write_codec;
-
+	//TIGER 启动用户一个读取输入线程，//疑问:这个是语音+视频吗？
 	/* Start the input thread */
 	conference_loop_launch_input(member, switch_core_session_get_pool(member->session));
 
@@ -1359,7 +1359,7 @@ void conference_loop_output(conference_member_t *member)
 		int wait_sec = 2;
 		int loops = 0;
 		switch_event_t *var_event;
-
+		//发送事件
 		switch_event_create(&var_event, SWITCH_EVENT_CHANNEL_DATA);
 		switch_channel_process_export(channel, NULL, var_event, "conference_auto_outcall_export_vars");
 
@@ -1374,10 +1374,10 @@ void conference_loop_output(conference_member_t *member)
 		if (toval) {
 			to = atoi(toval);
 			if (to < 10 || to > 500) {
-				to = 60;
+				to = 60;//保护性编程
 			}
 		}
-
+		//TIGER 处理auto call list的每个用户
 		for (cp = call_list; cp; cp = cp->next) {
 			int argc;
 			char *argv[512] = { 0 };
@@ -1416,10 +1416,10 @@ void conference_loop_output(conference_member_t *member)
 		switch_channel_set_app_flag(channel, CF_APP_TAGGED);
 		do {
 			switch_ivr_sleep(member->session, 100, SWITCH_TRUE, NULL);
-		} while(switch_channel_up(channel) && (member->conference->originating && --loops));
+		} while(switch_channel_up(channel) && (member->conference->originating && --loops));//tiger 等待channel up?
 		switch_channel_clear_app_flag(channel, CF_APP_TAGGED);
 
-		if (!switch_channel_ready(channel)) {
+		if (!switch_channel_ready(channel)) {//起不来,这个概率高吗？
 			member->conference->cancel_cause = SWITCH_CAUSE_ORIGINATOR_CANCEL;
 			goto end;
 		}
@@ -1428,13 +1428,13 @@ void conference_loop_output(conference_member_t *member)
 			conference_member_play_file(member, "tone_stream://%(500,0,640)", 0, SWITCH_TRUE);
 	}
 
-	if (!conference_utils_test_flag(member->conference, CFLAG_ANSWERED)) {
+	if (!conference_utils_test_flag(member->conference, CFLAG_ANSWERED)) {//是否要给用户发送answer，比如是用户自己呼叫进来的
 		switch_channel_answer(channel);
 	}
 
 
 	sanity = 2000;
-	while(!conference_utils_member_test_flag(member, MFLAG_ITHREAD) && sanity > 0) {
+	while(!conference_utils_member_test_flag(member, MFLAG_ITHREAD) && sanity > 0) {//TIGER ?
 		switch_cond_next();
 		sanity--;
 	}
@@ -1442,7 +1442,7 @@ void conference_loop_output(conference_member_t *member)
 	/* Fair WARNING, If you expect the caller to hear anything or for digit handling to be processed,      */
 	/* you better not block this thread loop for more than the duration of member->conference->timer_name!  */
 	while (!member->loop_loop && conference_utils_member_test_flag(member, MFLAG_RUNNING) && conference_utils_member_test_flag(member, MFLAG_ITHREAD)
-		   && switch_channel_ready(channel)) {
+		   && switch_channel_ready(channel)) {//下面是一个大循环  //!member->loop_loop 在reset的时候，能自动退出
 		switch_event_t *event;
 		int use_timer = 0;
 		switch_buffer_t *use_buffer = NULL;
@@ -1456,7 +1456,7 @@ void conference_loop_output(conference_member_t *member)
 
 		switch_mutex_lock(member->write_mutex);
 
-
+		//TIGER adv?
 		if (switch_channel_test_flag(member->channel, CF_CONFERENCE_ADV)) {
 			if (member->conference->la) {
 				conference_event_adv_la(member->conference, member, SWITCH_TRUE);
@@ -1464,7 +1464,7 @@ void conference_loop_output(conference_member_t *member)
 			switch_channel_clear_flag(member->channel, CF_CONFERENCE_ADV);
 		}
 
-
+		//事件
 		if (switch_core_session_dequeue_event(member->session, &event, SWITCH_FALSE) == SWITCH_STATUS_SUCCESS) {
 			if (event->event_id == SWITCH_EVENT_MESSAGE) {
 				char *from = switch_event_get_header(event, "from");
@@ -1485,7 +1485,7 @@ void conference_loop_output(conference_member_t *member)
 			}
 			switch_event_destroy(&event);
 		}
-
+		//输出？
 		if (switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_OUTBOUND) {
 			/* test to see if outbound channel has answered */
 			if (switch_channel_test_flag(channel, CF_ANSWERED) && !conference_utils_test_flag(member->conference, CFLAG_ANSWERED)) {
@@ -1504,7 +1504,7 @@ void conference_loop_output(conference_member_t *member)
 		mux_used = (uint32_t) switch_buffer_inuse(member->mux_buffer);
 
 		use_timer = 1;
-
+		//
 		if (mux_used) {
 			if (mux_used < bytes) {
 				if (++low_count >= 5) {
@@ -1525,7 +1525,7 @@ void conference_loop_output(conference_member_t *member)
 			write_frame.data = data;
 			use_buffer = member->mux_buffer;
 			low_count = 0;
-
+			//
 			if ((write_frame.datalen = (uint32_t) switch_buffer_read(use_buffer, write_frame.data, bytes))) {
 				if (write_frame.datalen) {
 					write_frame.samples = write_frame.datalen / 2 / member->conference->channels;
@@ -1566,7 +1566,7 @@ void conference_loop_output(conference_member_t *member)
 
 		switch_mutex_unlock(member->write_mutex);
 
-
+		//是否需要静音
 		if (conference_utils_member_test_flag(member, MFLAG_INDICATE_MUTE)) {
 			if (!zstr(member->conference->muted_sound)) {
 				conference_member_play_file(member, member->conference->muted_sound, 0, SWITCH_TRUE);
@@ -1578,7 +1578,7 @@ void conference_loop_output(conference_member_t *member)
 			}
 			conference_utils_member_clear_flag(member, MFLAG_INDICATE_MUTE);
 		}
-
+		//是否
 		if (conference_utils_member_test_flag(member, MFLAG_INDICATE_MUTE_DETECT)) {
 			if (!zstr(member->conference->mute_detect_sound)) {
 				conference_member_play_file(member, member->conference->mute_detect_sound, 0, SWITCH_TRUE);
@@ -1590,7 +1590,7 @@ void conference_loop_output(conference_member_t *member)
 			}
 			conference_utils_member_clear_flag(member, MFLAG_INDICATE_MUTE_DETECT);
 		}
-
+		//是否按了取消静音
 		if (conference_utils_member_test_flag(member, MFLAG_INDICATE_UNMUTE)) {
 			if (!zstr(member->conference->unmuted_sound)) {
 				conference_member_play_file(member, member->conference->unmuted_sound, 0, SWITCH_TRUE);
@@ -1602,7 +1602,7 @@ void conference_loop_output(conference_member_t *member)
 			}
 			conference_utils_member_clear_flag(member, MFLAG_INDICATE_UNMUTE);
 		}
-
+		//禁听
 		if (conference_utils_member_test_flag(member, MFLAG_INDICATE_DEAF)) {
 			if (!zstr(member->conference->deaf_sound)) {
 				conference_member_play_file(member, member->conference->deaf_sound, 0, SWITCH_TRUE);
@@ -1616,7 +1616,7 @@ void conference_loop_output(conference_member_t *member)
 			}
 			conference_utils_member_clear_flag(member, MFLAG_INDICATE_UNDEAF);
 		}
-
+		//
 		if (conference_utils_member_test_flag(member, MFLAG_INDICATE_BLIND)) {
 			if (!zstr(member->conference->deaf_sound)) {
 				conference_member_play_file(member, member->conference->deaf_sound, 0, SWITCH_TRUE);
@@ -1640,7 +1640,7 @@ void conference_loop_output(conference_member_t *member)
 		} else {
 			switch_ivr_parse_all_messages(member->session);
 		}
-
+		//
 		if (use_timer) {
 			switch_core_timer_next(&timer);
 		} else {
@@ -1650,10 +1650,10 @@ void conference_loop_output(conference_member_t *member)
 	} /* Rinse ... Repeat */
 
  end:
-
-	if (!member->loop_loop) {
+	//准备结束
+	if (!member->loop_loop) {//不允许loop，则清理线程
 		conference_utils_member_clear_flag_locked(member, MFLAG_RUNNING);
-
+		//等待线程关闭
 		/* Wait for the input thread to end */
 		if (member->input_thread) {
 			switch_thread_join(&st, member->input_thread);
@@ -1663,7 +1663,7 @@ void conference_loop_output(conference_member_t *member)
 
 	switch_core_timer_destroy(&timer);
 
-	if (member->loop_loop) {
+	if (member->loop_loop) {//如果是允许loop，则直接返回
 		return;
 	}
 
@@ -1671,7 +1671,7 @@ void conference_loop_output(conference_member_t *member)
 					  switch_channel_cause2str(switch_channel_get_cause(channel)));
 
 	/* if it's an outbound channel, store the release cause in the conference struct, we might need it */
-	if (switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_OUTBOUND) {
+	if (switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_OUTBOUND) {//TIGER 打印退出原因
 		member->conference->bridge_hangup_cause = switch_channel_get_cause(channel);
 	}
 }

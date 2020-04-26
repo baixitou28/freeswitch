@@ -27,7 +27,7 @@
  *
  *
  * switch_core.h -- Core Library Private Data (not to be installed into the system)
- * If the last line didn't make sense, stop reading this file, go away!,
+ * If the last line didn't make sense, stop reading this file, go away!, //tiger 看这注释
  * this file does not exist!!!!
  *
  */
@@ -101,31 +101,34 @@ typedef enum {
 	SSF_DESTROYABLE = (1 << 9),
 	SSF_MEDIA_BUG_TAP_ONLY = (1 << 10)
 } switch_session_flag_t;
-
+//TIGER switch_core_session  在pvt.h即private的意思
+//session和channel区别，session 会话，更关注控制信令，channel关注媒体
+//session的什么周期：谁生成的：switch_core_session_reguest_uuid
+//session调用流程，相互关系
 struct switch_core_session {
 	switch_memory_pool_t *pool;
 	switch_thread_t *thread;
 	switch_thread_id_t thread_id;
-	switch_endpoint_interface_t *endpoint_interface;
+	switch_endpoint_interface_t *endpoint_interface;//sip接口
 	switch_size_t id;
 	switch_session_flag_t flags;
-	switch_channel_t *channel;
+	switch_channel_t *channel;//channel指针
 
 	switch_io_event_hooks_t event_hooks;
-	switch_codec_t *read_codec;
+	switch_codec_t *read_codec;//解码
 	switch_codec_t *real_read_codec;
-	switch_codec_t *write_codec;
+	switch_codec_t *write_codec;//编码
 	switch_codec_t *real_write_codec;
 	switch_codec_t *video_read_codec;
 	switch_codec_t *video_write_codec;
 
-	switch_codec_implementation_t read_impl;
+	switch_codec_implementation_t read_impl;//读函数
 	switch_codec_implementation_t real_read_impl;
-	switch_codec_implementation_t write_impl;
+	switch_codec_implementation_t write_impl;//写函数
 	switch_codec_implementation_t video_read_impl;
 	switch_codec_implementation_t video_write_impl;
 
-	switch_audio_resampler_t *read_resampler;
+	switch_audio_resampler_t *read_resampler;//采样
 	switch_audio_resampler_t *write_resampler;
 
 	switch_mutex_t *mutex;
@@ -140,10 +143,10 @@ struct switch_core_session {
 	switch_thread_rwlock_t *rwlock;
 	switch_thread_rwlock_t *io_rwlock;
 
-	void *streams[SWITCH_MAX_STREAMS];
+	void *streams[SWITCH_MAX_STREAMS];//真正的流
 	int stream_count;
 
-	char uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];
+	char uuid_str[SWITCH_UUID_FORMATTED_LENGTH + 1];//UUID
 	void *private_info[SWITCH_CORE_SESSION_MAX_PRIVATES];
 	switch_queue_t *event_queue;
 	switch_queue_t *message_queue;
@@ -156,9 +159,9 @@ struct switch_core_session {
 	uint32_t stack_count;
 
 	switch_buffer_t *raw_write_buffer;
-	switch_frame_t raw_write_frame;
+	switch_frame_t raw_write_frame;//帧
 	switch_frame_t enc_write_frame;
-	uint8_t raw_write_buf[SWITCH_RECOMMENDED_BUFFER_SIZE];
+	uint8_t raw_write_buf[SWITCH_RECOMMENDED_BUFFER_SIZE];//buffer
 	uint8_t enc_write_buf[SWITCH_RECOMMENDED_BUFFER_SIZE];
 
 	switch_buffer_t *raw_read_buffer;
@@ -182,12 +185,12 @@ struct switch_core_session {
 	uint32_t track_id;
 	switch_log_level_t loglevel;
 	uint32_t soft_lock;
-	switch_ivr_dmachine_t *dmachine[2];
+	switch_ivr_dmachine_t *dmachine[2];//?
 	plc_state_t *plc;
 
-	switch_media_handle_t *media_handle;
+	switch_media_handle_t *media_handle;//?
 	uint32_t decoder_errors;
-	switch_core_video_thread_callback_func_t video_read_callback;
+	switch_core_video_thread_callback_func_t video_read_callback;//?
 	void *video_read_user_data;
 	switch_core_video_thread_callback_func_t text_read_callback;
 	void *text_read_user_data;

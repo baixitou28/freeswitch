@@ -121,7 +121,7 @@ struct switch_xml_config_item {
 SWITCH_DECLARE(void) switch_config_perform_set_item(switch_xml_config_item_t *item, const char *key, switch_xml_config_type_t type, int flags, void *ptr,
 													const void *defaultvalue, void *data, switch_xml_config_callback_t function, const char *syntax,
 													const char *helptext);
-
+//TIGER switch_xml_config_  xml_configº¯Êý
 /*!
  * \brief Gets the int representation of an enum
  * \param enum_options the switch_xml_config_enum_item_t array for this enum

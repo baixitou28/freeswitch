@@ -41,7 +41,7 @@ SWITCH_BEGIN_EXTERN_C
  * @{
  */
 	typedef struct real_pcre switch_regex_t;
-
+//TIGER switch_regex_ 正则处理
 SWITCH_DECLARE(switch_regex_t *) switch_regex_compile(const char *pattern, int options, const char **errorptr, int *erroroffset,
 													  const unsigned char *tables);
 

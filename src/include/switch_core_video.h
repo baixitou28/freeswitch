@@ -175,7 +175,7 @@ SWITCH_DECLARE(switch_image_t *)switch_img_alloc(switch_image_t  *img,
 						 unsigned int d_w,
 						 unsigned int d_h,
 						 unsigned int align);
-
+//TIGER switch_img__ ¿çÆ½Ì¨º¯Êý
 /*!\brief Open a descriptor, using existing storage for the underlying image
 *
 * Returns a descriptor for storing an image of the given format. The

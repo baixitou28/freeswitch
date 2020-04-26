@@ -38,7 +38,7 @@
 #include "private/switch_core_pvt.h"
 
 #define DEBUG_THREAD_POOL
-
+//TIGER 重要文件
 struct switch_session_manager session_manager;
 
 SWITCH_DECLARE(void) switch_core_session_set_dmachine(switch_core_session_t *session, switch_ivr_dmachine_t *dmachine, switch_digit_action_target_t target)
@@ -117,7 +117,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_set_codec_slin(switch_core_s
 	return SWITCH_STATUS_FALSE;
 }
 
-
+//根据uuid查找session用read_lock 获取
 SWITCH_DECLARE(switch_core_session_t *) switch_core_session_perform_locate(const char *uuid_str, const char *file, const char *func, int line)
 {
 	switch_core_session_t *session = NULL;
@@ -147,7 +147,7 @@ SWITCH_DECLARE(switch_core_session_t *) switch_core_session_perform_locate(const
 
 
 
-
+//根据uuid查找session，用rwlock_tryrdlock 获取,打印lock的状态
 
 SWITCH_DECLARE(switch_core_session_t *) switch_core_session_perform_force_locate(const char *uuid_str, const char *file, const char *func, int line)
 {
@@ -837,7 +837,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_perform_receive_message(swit
 	switch_status_t status = SWITCH_STATUS_SUCCESS;
 
 	switch_assert(session != NULL);
-
+	//TIGER 调用模块的函数指针，类似  (sofia_endpoint_interface->io_routines = &sofia_io_routines; [mod_sofia.c] )
 	if (message->message_id == SWITCH_MESSAGE_INDICATE_SIGNAL_DATA) {
 		if (session->endpoint_interface->io_routines->receive_message) {
 			status = session->endpoint_interface->io_routines->receive_message(session, message);
@@ -846,7 +846,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_perform_receive_message(swit
 		switch_core_session_free_message(&message);
 		return status;
 	}
-
+	//TIGER 获取锁
 	if ((status = switch_core_session_read_lock_hangup(session)) != SWITCH_STATUS_SUCCESS) {
 		return status;
 	}
@@ -879,7 +879,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_perform_receive_message(swit
 	if (message->message_id == SWITCH_MESSAGE_INDICATE_MEDIA) {
 		switch_channel_set_flag(session->channel, CF_PROXY_OFF);
 	}
-
+//TIGER 
 	if (message->message_id == SWITCH_MESSAGE_INDICATE_DISPLAY) {
 		char *arg = NULL;
 
@@ -905,38 +905,41 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_perform_receive_message(swit
 		}
 
 	}
-
+//TIGER
 	if (switch_channel_down_nosig(session->channel)) {
 		switch_log_printf(SWITCH_CHANNEL_ID_LOG, message->_file, message->_func, message->_line,
 						  switch_core_session_get_uuid(session), SWITCH_LOG_DEBUG, "%s skip receive message [%s] (channel is hungup already)\n",
 						  switch_channel_get_name(session->channel), message_names[message->message_id]);
 
 	} else {
+//TIGER 	
 		if (session->media_handle) {
 			status = switch_core_media_receive_message(session, message);
 		}
+//TIGER	前面为什么要先执行一次?	
 		if (status == SWITCH_STATUS_SUCCESS) {
 			if (session->endpoint_interface->io_routines->receive_message) {
 				status = session->endpoint_interface->io_routines->receive_message(session, message);
 			}
 		}
 	}
-
+//TIGER	
 	if (status == SWITCH_STATUS_SUCCESS) {
+//TIGER	执行event里的回调函数		
 		for (ptr = session->event_hooks.receive_message; ptr; ptr = ptr->next) {
 			if ((status = ptr->receive_message(session, message)) != SWITCH_STATUS_SUCCESS) {
 				break;
 			}
 		}
 
-
+//TIGER
 		if (message->message_id == SWITCH_MESSAGE_INDICATE_BRIDGE &&
 			switch_channel_test_flag(session->channel, CF_CONFIRM_BLIND_TRANSFER)) {
 			switch_core_session_t *other_session;
 			const char *uuid = switch_channel_get_variable(session->channel, "blind_transfer_uuid");
 
 			switch_channel_clear_flag(session->channel, CF_CONFIRM_BLIND_TRANSFER);
-
+//TIGER
 			if (!zstr(uuid) && (other_session = switch_core_session_locate(uuid))) {
 				switch_core_session_message_t msg = { 0 };
 				msg.message_id = SWITCH_MESSAGE_INDICATE_BLIND_TRANSFER_RESPONSE;
@@ -952,7 +955,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_perform_receive_message(swit
 	message->_file = NULL;
 	message->_func = NULL;
 	message->_line = 0;
-
+//TIGER	
 	if (switch_channel_up_nosig(session->channel)) {
 		if (message->message_id == SWITCH_MESSAGE_INDICATE_BRIDGE || message->message_id == SWITCH_MESSAGE_INDICATE_UNBRIDGE) {
 			switch_core_media_bug_flush_all(session);
@@ -1683,7 +1686,7 @@ SWITCH_DECLARE(switch_bool_t) switch_core_session_in_thread(switch_core_session_
 {
 	return switch_thread_equal(switch_thread_self(), session->thread_id) ? SWITCH_TRUE : SWITCH_FALSE;
 }
-
+//TIGER session thread
 static void *SWITCH_THREAD_FUNC switch_core_session_thread(switch_thread_t *thread, void *obj)
 {
 	switch_core_session_t *session = obj;
@@ -1693,7 +1696,7 @@ static void *SWITCH_THREAD_FUNC switch_core_session_thread(switch_thread_t *thre
 
 	session->thread = thread;
 	session->thread_id = switch_thread_self();
-
+//主函数，看书说事一个状态机
 	switch_core_session_run(session);
 	switch_core_media_bug_remove_all(session);
 
@@ -1750,15 +1753,15 @@ static void *SWITCH_THREAD_FUNC switch_core_session_thread_pool_worker(switch_th
 #endif
 	for (;;) {
 		void *pop;
-		switch_status_t check_status = switch_queue_pop_timeout(session_manager.thread_queue, &pop, 5000000);
+		switch_status_t check_status = switch_queue_pop_timeout(session_manager.thread_queue, &pop, 5000000);//取一个session 
 		if (check_status == SWITCH_STATUS_SUCCESS) {
 			switch_thread_data_t *td = (switch_thread_data_t *) pop;
 
 #ifdef DEBUG_THREAD_POOL
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG10, "Worker Thread %ld Processing\n", (long) (intptr_t) thread);
 #endif
-			td->func(thread, td->obj);
-
+			td->func(thread, td->obj);//运行session的主函数
+			//准备退出
 			if (td->pool) {
 				switch_memory_pool_t *pool = td->pool;
 				td = NULL;
@@ -1813,13 +1816,13 @@ static void thread_launch_failure(void)
 
 	switch_mutex_unlock(session_manager.mutex);
 }
-
+//TIGER 判断队列是否忙，如果不忙，启动一个worker线程 取跑session主函数
 static switch_status_t check_queue(void)
 {
 	switch_status_t status = SWITCH_STATUS_FALSE;
 	switch_mutex_lock(session_manager.mutex);
 	if (session_manager.running >= ++session_manager.busy) {
-		switch_mutex_unlock(session_manager.mutex);
+		switch_mutex_unlock(session_manager.mutex);//如果pool太忙，就等待
 		return SWITCH_STATUS_SUCCESS;
 	}
 	++session_manager.running;
@@ -1839,7 +1842,7 @@ static switch_status_t check_queue(void)
 		switch_threadattr_detach_set(thd_attr, 1);
 		switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);
 		switch_threadattr_priority_set(thd_attr, SWITCH_PRI_LOW);
-
+		//启动一个work 去执行session的主函数
 		if (switch_thread_create(&thread, thd_attr, switch_core_session_thread_pool_worker, node, node->pool) != SWITCH_STATUS_SUCCESS) {
 			switch_mutex_lock(session_manager.mutex);
 			if (!--session_manager.running) {
@@ -1880,25 +1883,25 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_thread_pool_launch(switch_co
 	switch_thread_data_t *td;
 
 	switch_mutex_lock(session->mutex);
-	if (switch_test_flag(session, SSF_THREAD_RUNNING)) {
+	if (switch_test_flag(session, SSF_THREAD_RUNNING)) {//是否已经启动
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_CRIT, "Cannot double-launch thread!\n");
 	} else if (switch_test_flag(session, SSF_THREAD_STARTED)) {
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_CRIT, "Cannot launch thread again after it has already been run!\n");
 	} else {
 		switch_set_flag(session, SSF_THREAD_RUNNING);
 		switch_set_flag(session, SSF_THREAD_STARTED);
-		td = switch_core_session_alloc(session, sizeof(*td));
+		td = switch_core_session_alloc(session, sizeof(*td));//分配一个结构
 		td->obj = session;
-		td->func = switch_core_session_thread;
-		status = switch_queue_push(session_manager.thread_queue, td);
-		check_queue();
+		td->func = switch_core_session_thread;//入口函数
+		status = switch_queue_push(session_manager.thread_queue, td);//放入队列
+		check_queue();//看是否可以启动一个worker线程，跑session
 	}
 	switch_mutex_unlock(session->mutex);
 
 	return status;
 }
 
-
+//TIGER 重要 session thread 线程启动
 SWITCH_DECLARE(switch_status_t) switch_core_session_thread_launch(switch_core_session_t *session)
 {
 	switch_status_t status = SWITCH_STATUS_FALSE;
@@ -1906,11 +1909,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_thread_launch(switch_core_se
 	switch_threadattr_t *thd_attr;
 
 	if (switch_test_flag(session, SSF_THREAD_RUNNING) || switch_test_flag(session, SSF_THREAD_STARTED)) {
-		status = SWITCH_STATUS_INUSE;
+		status = SWITCH_STATUS_INUSE;//是否已经启动？
 		goto end;
 	}
 
-
+//是否是线程池方式启动
 	if (switch_test_flag((&runtime), SCF_SESSION_THREAD_POOL)) {
 		return switch_core_session_thread_pool_launch(session);
 	}
@@ -1928,11 +1931,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_thread_launch(switch_core_se
 		switch_threadattr_create(&thd_attr, session->pool);
 		switch_threadattr_detach_set(thd_attr, 1);
 		switch_threadattr_stacksize_set(thd_attr, SWITCH_THREAD_STACKSIZE);
-
+//启动线程
 		if (switch_thread_create(&thread, thd_attr, switch_core_session_thread, session, session->pool) == SWITCH_STATUS_SUCCESS) {
 			switch_set_flag(session, SSF_THREAD_STARTED);
 			status = SWITCH_STATUS_SUCCESS;
-		} else {
+		} else {//线程创建失败
 			switch_clear_flag(session, SSF_THREAD_RUNNING);
 			switch_clear_flag(session, SSF_THREAD_STARTED);
 			switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_CRIT, "Cannot create thread!\n");
@@ -2295,7 +2298,8 @@ SWITCH_DECLARE(switch_core_session_t *) switch_core_session_request_xml(switch_e
 }
 
 
-
+//TIGER 生成一个新的session switch_core_session，如果没有UUID，就动态生成一个
+//session创建时也创建一个channel
 SWITCH_DECLARE(switch_core_session_t *) switch_core_session_request_uuid(switch_endpoint_interface_t
 																		 *endpoint_interface,
 																		 switch_call_direction_t direction,
@@ -2308,33 +2312,33 @@ SWITCH_DECLARE(switch_core_session_t *) switch_core_session_request_uuid(switch_
 	uint32_t count = 0;
 	int32_t sps = 0;
 
-
+//01.是否已存在
 	if (use_uuid && switch_core_hash_find(session_manager.session_table, use_uuid)) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "Duplicate UUID!\n");
 		return NULL;
 	}
-
+//02.TIGER ??不理解inbound
 	if (direction == SWITCH_CALL_DIRECTION_INBOUND && !switch_core_ready_inbound()) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "The system cannot create any inbound sessions at this time.\n");
 		return NULL;
 	}
-
+//03.
 	if (direction == SWITCH_CALL_DIRECTION_OUTBOUND && !switch_core_ready_outbound()) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "The system cannot create any outbound sessions at this time.\n");
 		return NULL;
 	}
-
+//04.还不是时候
 	if (!switch_core_ready() || endpoint_interface == NULL) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "The system cannot create any sessions at this time.\n");
 		return NULL;
 	}
-
+//05.空闲指的是等待吗？
 	if (runtime.min_idle_time > 0 && runtime.profile_time < runtime.min_idle_time) {
 		return NULL;
 	}
 
 	PROTECT_INTERFACE(endpoint_interface);
-
+//06.是否要限制session数
 	if (!(originate_flags & SOF_NO_LIMITS)) {
 		switch_mutex_lock(runtime.throttle_mutex);
 		count = session_manager.session_count;
@@ -2354,43 +2358,43 @@ SWITCH_DECLARE(switch_core_session_t *) switch_core_session_request_uuid(switch_
 		}
 	}
 
-
+//内存 是否用pool
 	if (pool && *pool) {
 		usepool = *pool;
 		*pool = NULL;
 	} else {
-		switch_core_new_memory_pool(&usepool);
+		switch_core_new_memory_pool(&usepool);//这里创新的pool，写得难看了点
 	}
-
+//07. 创建新的session
 	session = switch_core_alloc(usepool, sizeof(*session));
 	session->pool = usepool;
 
 	switch_core_memory_pool_set_data(session->pool, "__session", session);
-
+//08. 赶紧分配一个channel，，这里感觉可以理解session 和channel是包含关系
 	if (switch_channel_alloc(&session->channel, direction, session->pool) != SWITCH_STATUS_SUCCESS) {
 		abort();
 	}
-
-	switch_channel_init(session->channel, session, CS_NEW, 0);
-
+	//初始化,开始的channel状态是CS_NEW
+	switch_channel_init(session->channel, session, CS_NEW, 0);//状态CS_NEW
+//如果是outbound
 	if (direction == SWITCH_CALL_DIRECTION_OUTBOUND) {
 		switch_channel_set_flag(session->channel, CF_OUTBOUND);
 	}
 
 	/* The session *IS* the pool you may not alter it because you have no idea how
 	   its all private it will be passed to the thread run function */
-
-	if (use_uuid) {
+//09. session 赋值
+	if (use_uuid) {//收到的呼叫，应该是有自己的会话ID的，和这个uuid一致吗？==>不一致
 		switch_set_string(session->uuid_str, use_uuid);
-	} else {
+	} else {//没有就分配一个uuid
 		switch_uuid_get(&uuid);
 		switch_uuid_format(session->uuid_str, &uuid);
 	}
-
+	//设置channel的uuid
 	switch_channel_set_variable(session->channel, "uuid", session->uuid_str);
 	switch_channel_set_variable(session->channel, "call_uuid", session->uuid_str);
-
-	session->endpoint_interface = endpoint_interface;
+//其他的初始化
+	session->endpoint_interface = endpoint_interface;//TIGER 这个一般是?
 	session->raw_write_frame.data = session->raw_write_buf;
 	session->raw_write_frame.buflen = sizeof(session->raw_write_buf);
 	session->raw_read_frame.data = session->raw_read_buf;
@@ -2401,7 +2405,7 @@ SWITCH_DECLARE(switch_core_session_t *) switch_core_session_request_uuid(switch_
 	session->enc_write_frame.buflen = sizeof(session->enc_write_buf);
 	session->enc_read_frame.data = session->enc_read_buf;
 	session->enc_read_frame.buflen = sizeof(session->enc_read_buf);
-
+//从session->pool 中分配内存
 	switch_mutex_init(&session->mutex, SWITCH_MUTEX_NESTED, session->pool);
 	switch_mutex_init(&session->resample_mutex, SWITCH_MUTEX_NESTED, session->pool);
 	switch_mutex_init(&session->codec_read_mutex, SWITCH_MUTEX_NESTED, session->pool);
@@ -2413,21 +2417,22 @@ SWITCH_DECLARE(switch_core_session_t *) switch_core_session_request_uuid(switch_
 	switch_thread_cond_create(&session->cond, session->pool);
 	switch_thread_rwlock_create(&session->rwlock, session->pool);
 	switch_thread_rwlock_create(&session->io_rwlock, session->pool);
+//这些队列对于理解编程很重要
 	switch_queue_create(&session->message_queue, SWITCH_MESSAGE_QUEUE_LEN, session->pool);
 	switch_queue_create(&session->signal_data_queue, SWITCH_MESSAGE_QUEUE_LEN, session->pool);
 	switch_queue_create(&session->event_queue, SWITCH_EVENT_QUEUE_LEN, session->pool);
 	switch_queue_create(&session->private_event_queue, SWITCH_EVENT_QUEUE_LEN, session->pool);
 	switch_queue_create(&session->private_event_queue_pri, SWITCH_EVENT_QUEUE_LEN, session->pool);
-
+//插入session_manager.session_table 的hash 列表
 	switch_mutex_lock(runtime.session_hash_mutex);
-	switch_core_hash_insert(session_manager.session_table, session->uuid_str, session);
-	session->id = session_manager.session_id++;
+	switch_core_hash_insert(session_manager.session_table, session->uuid_str, session);//便于管理和快速查找这个uuid
+	session->id = session_manager.session_id++;//在session_manager里面的序列号
 	session_manager.session_count++;
 
 	if (session_manager.session_count > (uint32_t)runtime.sessions_peak) {
 		runtime.sessions_peak = session_manager.session_count;
 	}
-	if (session_manager.session_count > (uint32_t)runtime.sessions_peak_fivemin) {
+	if (session_manager.session_count > (uint32_t)runtime.sessions_peak_fivemin) {//sessions_peak_fivemin session动态创建也有管制
 		runtime.sessions_peak_fivemin = session_manager.session_count;
 	}
 
@@ -2539,7 +2544,7 @@ SWITCH_DECLARE(uint32_t) switch_core_sessions_per_second(uint32_t new_limit)
 
 	return runtime.sps_total;
 }
-
+//tiger session 主要是初始化session_manager，和一般理解不一样
 void switch_core_session_init(switch_memory_pool_t *pool)
 {
 	memset(&session_manager, 0, sizeof(session_manager));
@@ -2591,7 +2596,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_get_app_flags(const char *ap
 	return status;
 
 }
-
+//TIGER session 生成一个event，加入队列
 SWITCH_DECLARE(switch_status_t) switch_core_session_execute_application_async(switch_core_session_t *session, const char *app, const char *arg)
 {
 	switch_event_t *execute_event;
@@ -2620,6 +2625,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_execute_application_async(sw
 		}
 
 		switch_event_add_header_string(execute_event, SWITCH_STACK_BOTTOM, "event-lock", "true");
+		//生成event，加入队列，异步处理
 		switch_core_session_queue_private_event(session, &execute_event, SWITCH_FALSE);
 
 		return SWITCH_STATUS_SUCCESS;
@@ -2748,7 +2754,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_execute_application_get_flag
 
 	return status;
 }
-
+//tiger session 执行app，比如会议  被exec_app调用
 SWITCH_DECLARE(switch_status_t) switch_core_session_exec(switch_core_session_t *session,
 														 const switch_application_interface_t *application_interface, const char *arg)
 {
@@ -2772,7 +2778,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_exec(switch_core_session_t *
 	}
 
 	switch_assert(application_interface);
-
+	//得到app
 	app = application_interface->interface_name;
 
 	if (arg) {
@@ -2808,7 +2814,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_exec(switch_core_session_t *
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "EXECUTE %s %s(%s)\n",
 					  switch_channel_get_name(session->channel), app, switch_str_nil(expanded));
 	} else {
-		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG_CLEAN(session), SWITCH_LOG_DEBUG, "EXECUTE %s %s(%s)\n",
+		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG_CLEAN(session), SWITCH_LOG_DEBUG, "EXECUTE %s %s(%s)\n",//TIGER 
 					  switch_channel_get_name(session->channel), app, switch_str_nil(expanded));
 	}
 
@@ -2849,7 +2855,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_exec(switch_core_session_t *
 	switch_channel_set_variable(channel, SWITCH_CURRENT_APPLICATION_VARIABLE, application_interface->interface_name);
 	switch_channel_set_variable_var_check(channel, SWITCH_CURRENT_APPLICATION_DATA_VARIABLE, expanded, SWITCH_FALSE);
 	switch_channel_set_variable(channel, SWITCH_CURRENT_APPLICATION_RESPONSE_VARIABLE, NULL);
-
+//生成命令执行完成的SWITCH_EVENT_CHANNEL_EXECUTE app开始执行的事件
 	if (switch_event_create(&event, SWITCH_EVENT_CHANNEL_EXECUTE) == SWITCH_STATUS_SUCCESS) {
 		switch_channel_event_set_data(session->channel, event);
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Application", application_interface->interface_name);
@@ -2868,10 +2874,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_exec(switch_core_session_t *
 	msg.message_id = SWITCH_MESSAGE_INDICATE_APPLICATION_EXEC;
 	msg.string_array_arg[0] = application_interface->interface_name;
 	msg.string_array_arg[1] = expanded;
+//等待msg	?
 	switch_core_session_receive_message(session, &msg);
-
+//执行app
 	application_interface->application_function(session, expanded);
-
+//生成命令响应的SWITCH_EVENT_CHANNEL_EXECUTE_COMPLETE app完成的事件的Application-Response
 	if (switch_event_create(&event, SWITCH_EVENT_CHANNEL_EXECUTE_COMPLETE) == SWITCH_STATUS_SUCCESS) {
 		const char *resp = switch_channel_get_variable(session->channel, SWITCH_CURRENT_APPLICATION_RESPONSE_VARIABLE);
 		switch_channel_event_set_data(session->channel, event);
@@ -2881,7 +2888,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_exec(switch_core_session_t *
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Application-UUID", app_uuid);
 		switch_event_fire(&event);
 	}
-
+//等待msg?
 	msg.message_id = SWITCH_MESSAGE_INDICATE_APPLICATION_EXEC_COMPLETE;
 	switch_core_session_receive_message(session, &msg);
 

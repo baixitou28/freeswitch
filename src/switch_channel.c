@@ -34,7 +34,7 @@
 #include <switch.h>
 #include <switch_channel.h>
 #include <pcre.h>
-
+// TIGER030 重要文件
 struct switch_cause_table {
 	const char *name;
 	switch_call_cause_t cause;
@@ -136,7 +136,7 @@ typedef enum {
 	LP_ORIGINATOR,
 	LP_ORIGINATEE
 } switch_originator_type_t;
-
+//tiger 重要结构
 struct switch_channel {
 	char *name;
 	switch_call_direction_t direction;
@@ -349,10 +349,10 @@ SWITCH_DECLARE(switch_channel_callstate_t) switch_channel_str2callstate(const ch
 }
 
 
-
+//TIGER CHANNEL 
 SWITCH_DECLARE(void) switch_channel_perform_audio_sync(switch_channel_t *channel, const char *file, const char *func, int line)
 {
-	if (switch_channel_media_up(channel)) {
+	if (switch_channel_media_up(channel)) {//如果不是CF_ANSWERED 或者CF_EARLY_MEDIA ，开始就放录音
 		switch_core_session_message_t *msg = NULL;
 
 		msg = switch_core_session_alloc(channel->session, sizeof(*msg));
@@ -3217,7 +3217,7 @@ SWITCH_DECLARE(void) switch_channel_set_hangup_time(switch_channel_t *channel)
 	}
 }
 
-
+//TIGER 理解每一步骤含义
 SWITCH_DECLARE(switch_channel_state_t) switch_channel_perform_hangup(switch_channel_t *channel,
 																	 const char *file, const char *func, int line, switch_call_cause_t hangup_cause)
 {
@@ -3226,14 +3226,14 @@ SWITCH_DECLARE(switch_channel_state_t) switch_channel_perform_hangup(switch_chan
 	switch_assert(channel != NULL);
 
 	/* one per customer */
-	switch_mutex_lock(channel->state_mutex);
-	if (!(channel->opaque_flags & OCF_HANGUP)) {
+	switch_mutex_lock(channel->state_mutex);//先获取锁
+	if (!(channel->opaque_flags & OCF_HANGUP)) {//再次检查double check
 		channel->opaque_flags |= OCF_HANGUP;
 		ok = 1;
 	}
 	switch_mutex_unlock(channel->state_mutex);
 
-	if (switch_channel_test_flag(channel, CF_LEG_HOLDING)) {
+	if (switch_channel_test_flag(channel, CF_LEG_HOLDING)) {//是否是hold状态
 		switch_channel_mark_hold(channel, SWITCH_FALSE);
 		switch_channel_set_flag(channel, CF_HANGUP_HELD);
 	}
@@ -3242,9 +3242,9 @@ SWITCH_DECLARE(switch_channel_state_t) switch_channel_perform_hangup(switch_chan
 		return channel->state;
 	}
 
-	switch_channel_clear_flag(channel, CF_BLOCK_STATE);
+	switch_channel_clear_flag(channel, CF_BLOCK_STATE);//TIGER ?
 
-	if (channel->state < CS_HANGUP) {
+	if (channel->state < CS_HANGUP) {//呼叫未挂断
 		switch_channel_state_t last_state;
 		switch_event_t *event;
 		const char *var;
@@ -3252,50 +3252,50 @@ SWITCH_DECLARE(switch_channel_state_t) switch_channel_perform_hangup(switch_chan
 
 		switch_mutex_lock(channel->profile_mutex);
 		if (channel->hold_record && !channel->hold_record->off) {
-			channel->hold_record->off = switch_time_now();
+			channel->hold_record->off = switch_time_now();//标记最后时间
 		}
 		switch_mutex_unlock(channel->profile_mutex);
 
 		switch_mutex_lock(channel->state_mutex);
 		last_state = channel->state;
-		channel->state = CS_HANGUP;
+		channel->state = CS_HANGUP;//设置状态
 		switch_mutex_unlock(channel->state_mutex);
 
-		channel->hangup_cause = hangup_cause;
+		channel->hangup_cause = hangup_cause;//挂断原因
 		switch_log_printf(SWITCH_CHANNEL_ID_LOG, file, func, line, switch_channel_get_uuid(channel), SWITCH_LOG_NOTICE, "Hangup %s [%s] [%s]\n",
 						  channel->name, state_names[last_state], switch_channel_cause2str(channel->hangup_cause));
 
-
+		//tiger 设置是不是有点...
 		switch_channel_set_variable_partner(channel, "last_bridge_hangup_cause", switch_channel_cause2str(hangup_cause));
 
 		if ((var = switch_channel_get_variable(channel, SWITCH_PROTO_SPECIFIC_HANGUP_CAUSE_VARIABLE))) {
 			switch_channel_set_variable_partner(channel, "last_bridge_" SWITCH_PROTO_SPECIFIC_HANGUP_CAUSE_VARIABLE, var);
 		}
-
+		//设置最后的角色
 		if (switch_channel_test_flag(channel, CF_BRIDGE_ORIGINATOR)) {
 			switch_channel_set_variable(channel, "last_bridge_role", "originator");
 		} else if (switch_channel_test_flag(channel, CF_BRIDGED)) {
 			switch_channel_set_variable(channel, "last_bridge_role", "originatee");
 		}
 
-
+		//tiger 啥意思，启动session来关闭？
 		if (!switch_core_session_running(channel->session) && !switch_core_session_started(channel->session)) {
 			switch_core_session_thread_launch(channel->session);
 		}
-
+		//发送事件
 		if (switch_event_create(&event, SWITCH_EVENT_CHANNEL_HANGUP) == SWITCH_STATUS_SUCCESS) {
 			switch_channel_event_set_data(channel, event);
 			switch_event_fire(&event);
 		}
-
-		switch_core_session_kill_channel(channel->session, SWITCH_SIG_KILL);
-		switch_core_session_signal_state_change(channel->session);
-		switch_core_session_hangup_state(channel->session, SWITCH_FALSE);
+		//需要kill?
+		switch_core_session_kill_channel(channel->session, SWITCH_SIG_KILL);//TIGER 
+		switch_core_session_signal_state_change(channel->session);//TIGER 
+		switch_core_session_hangup_state(channel->session, SWITCH_FALSE);//TIGER
 	}
 
 	return channel->state;
 }
-
+// TIGER 啥意思？
 static switch_status_t send_ind(switch_channel_t *channel, switch_core_session_message_types_t msg_id, const char *file, const char *func, int line)
 {
 	switch_core_session_message_t msg = { 0 };
@@ -3304,7 +3304,7 @@ static switch_status_t send_ind(switch_channel_t *channel, switch_core_session_m
 	msg.from = channel->name;
 	return switch_core_session_perform_receive_message(channel->session, &msg, file, func, line);
 }
-
+//TIGER 
 SWITCH_DECLARE(switch_status_t) switch_channel_perform_acknowledge_call(switch_channel_t *channel,
 																		const char *file, const char *func, int line)
 {
@@ -3415,7 +3415,7 @@ SWITCH_DECLARE(void) switch_channel_check_zrtp(switch_channel_t *channel)
 		}
 	}
 }
-
+//TIGER
 SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_pre_answered(switch_channel_t *channel, const char *file, const char *func, int line)
 {
 	switch_event_t *event;
@@ -3490,7 +3490,7 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_pre_answered(switch_
 
 	return SWITCH_STATUS_FALSE;
 }
-
+//TIGER 
 SWITCH_DECLARE(switch_status_t) switch_channel_perform_pre_answer(switch_channel_t *channel, const char *file, const char *func, int line)
 {
 	switch_core_session_message_t msg = { 0 };
@@ -3512,11 +3512,11 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_pre_answer(switch_channel
 
 	if (switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_INBOUND) {
 		msg.message_id = SWITCH_MESSAGE_INDICATE_PROGRESS;
-		msg.from = channel->name;
+		msg.from = channel->name;//无法理解为什么要吧msg放这里，不是要发送100
 		status = switch_core_session_perform_receive_message(channel->session, &msg, file, func, line);
 	}
 
-	if (status == SWITCH_STATUS_SUCCESS) {
+	if (status == SWITCH_STATUS_SUCCESS) {//前面是阻塞式接收？
 		switch_channel_perform_mark_pre_answered(channel, file, func, line);
 		switch_channel_audio_sync(channel);
 	} else {
@@ -3582,7 +3582,7 @@ static void do_api_on(switch_channel_t *channel, const char *variable)
 	free(stream.data);
 }
 
-
+// TIGER 执行api on
 SWITCH_DECLARE(switch_status_t) switch_channel_api_on(switch_channel_t *channel, const char *variable_prefix)
 {
 	switch_event_header_t *hp;
@@ -3614,7 +3614,7 @@ SWITCH_DECLARE(switch_status_t) switch_channel_api_on(switch_channel_t *channel,
 
 	return x ? SWITCH_STATUS_SUCCESS : SWITCH_STATUS_FALSE;
 }
-
+// TIGER 执行application
 static void do_execute_on(switch_channel_t *channel, const char *variable)
 {
 	char *arg = NULL;
@@ -3645,7 +3645,7 @@ static void do_execute_on(switch_channel_t *channel, const char *variable)
 		switch_core_session_execute_application(channel->session, app, arg);
 	}
 }
-
+//TIGER 执行某个application
 SWITCH_DECLARE(switch_status_t) switch_channel_execute_on(switch_channel_t *channel, const char *variable_prefix)
 {
 	switch_event_header_t *hp;
@@ -3679,7 +3679,7 @@ SWITCH_DECLARE(switch_status_t) switch_channel_execute_on(switch_channel_t *chan
 
 	return x ? SWITCH_STATUS_SUCCESS : SWITCH_STATUS_FALSE;
 }
-
+// TIGER 只是标记answered
 SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_channel_t *channel, const char *file, const char *func, int line)
 {
 	switch_event_t *event;
@@ -3688,7 +3688,7 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_chan
 	const char *var;
 
 	switch_assert(channel != NULL);
-
+	//状态处理
 	if (channel->hangup_cause || channel->state >= CS_HANGUP) {
 		return SWITCH_STATUS_FALSE;
 	}
@@ -3696,24 +3696,24 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_chan
 	if (switch_channel_test_flag(channel, CF_ANSWERED)) {
 		return SWITCH_STATUS_SUCCESS;
 	}
-
+	//dtls处理
 	switch_core_media_check_dtls(channel->session, SWITCH_MEDIA_TYPE_AUDIO);
-
+	//记录answer时间
 	if (channel->caller_profile && channel->caller_profile->times) {
 		switch_mutex_lock(channel->profile_mutex);
 		channel->caller_profile->times->answered = switch_micro_time_now();
 		switch_mutex_unlock(channel->profile_mutex);
 	}
-
+	// zrtp处理
 	switch_channel_check_zrtp(channel);
 	switch_channel_set_flag(channel, CF_ANSWERED);
-
+	//video_mirror_input是啥？
 	if (switch_true(switch_channel_get_variable(channel, "video_mirror_input"))) {
 		switch_channel_set_flag(channel, CF_VIDEO_MIRROR_INPUT);
 		//switch_channel_set_flag(channel, CF_VIDEO_DECODED_READ);
 	}
 
-
+	//创建事件
 	if (switch_event_create(&event, SWITCH_EVENT_CHANNEL_ANSWER) == SWITCH_STATUS_SUCCESS) {
 		switch_channel_event_set_data(channel, event);
 		switch_event_fire(&event);
@@ -3727,11 +3727,11 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_chan
 		switch_core_session_kill_channel(other_session, SWITCH_SIG_BREAK);
 		switch_core_session_rwunlock(other_session);
 	}
-
+	//ptime未看
 	if (switch_true(switch_channel_get_variable(channel, SWITCH_PASSTHRU_PTIME_MISMATCH_VARIABLE))) {
 		switch_channel_set_flag(channel, CF_PASSTHRU_PTIME_MISMATCH);
 	}
-
+	//心跳事件
 	if ((var = switch_channel_get_variable(channel, SWITCH_ENABLE_HEARTBEAT_EVENTS_VARIABLE))) {
 		uint32_t seconds = 60;
 		int tmp;
@@ -3749,7 +3749,7 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_chan
 			switch_core_session_enable_heartbeat(channel->session, seconds);
 		}
 	}
-
+//TIGER 日志:已经发送answer
 	switch_channel_set_variable(channel, SWITCH_ENDPOINT_DISPOSITION_VARIABLE, "ANSWER");
 	switch_log_printf(SWITCH_CHANNEL_ID_LOG, file, func, line, switch_channel_get_uuid(channel), SWITCH_LOG_NOTICE, "Channel [%s] has been answered\n",
 					  channel->name);
@@ -3763,16 +3763,16 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_chan
 		}
 	}
 
-	switch_channel_execute_on(channel, SWITCH_CHANNEL_EXECUTE_ON_ANSWER_VARIABLE);
+	switch_channel_execute_on(channel, SWITCH_CHANNEL_EXECUTE_ON_ANSWER_VARIABLE);//运行ANSWER事件里的application
 
 	if (!switch_channel_test_flag(channel, CF_EARLY_MEDIA)) {
-		switch_channel_execute_on(channel, SWITCH_CHANNEL_EXECUTE_ON_MEDIA_VARIABLE);
+		switch_channel_execute_on(channel, SWITCH_CHANNEL_EXECUTE_ON_MEDIA_VARIABLE);//运行earlymedia的application
 		switch_channel_api_on(channel, SWITCH_CHANNEL_API_ON_MEDIA_VARIABLE);
 	}
 
-	switch_channel_api_on(channel, SWITCH_CHANNEL_API_ON_ANSWER_VARIABLE);
+	switch_channel_api_on(channel, SWITCH_CHANNEL_API_ON_ANSWER_VARIABLE);//运行api
 
-	switch_channel_presence(channel, "unknown", "answered", NULL);
+	switch_channel_presence(channel, "unknown", "answered", NULL);//tiger 产生事件
 
 	//switch_channel_audio_sync(channel);
 
@@ -3790,33 +3790,44 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_mark_answered(switch_chan
 
 	return SWITCH_STATUS_SUCCESS;
 }
-
+//TIGER 关键函数，dialplan/default.xml 中application=answer，就能发送200 OK了，后续如何处理呢
+//SWITCH_STANDARD_APP(answer_function)  【mod\applications\mod_dptools\mod_dptools.c】
+//--->switch_channel_answer 即 switch_channel_perform_answer 【switch_channel.c】
+//--->switch_core_session_perform_receive_message(SWITCH_MESSAGE_INDICATE_ANSWER)  这里容易误解只看到再等answer，以为没有发送200OK
+//-->sofia_receive_message [mod_sofia.c] 
+//-->SWITCH_MESSAGE_INDICATE_ANSWER sofia_answer_channel [mod_sofia.c] 
+//-->nua_ack [libs\sofia-sip\libsofia-sip-ua\nua\nua.c]
+//-->nua_stack_post_signal
+//-->nua_stack_signal [nua_stack.c]
+//-->nua_stack_ack
+//-->nua_invite_client_ack
+//-->soa_generate_answer
 SWITCH_DECLARE(switch_status_t) switch_channel_perform_answer(switch_channel_t *channel, const char *file, const char *func, int line)
 {
 	switch_core_session_message_t msg = { 0 };
 	switch_status_t status = SWITCH_STATUS_SUCCESS;
 
 	switch_assert(channel != NULL);
-
+	//01.
 	if (switch_channel_direction(channel) == SWITCH_CALL_DIRECTION_OUTBOUND) {
 		return SWITCH_STATUS_SUCCESS;
 	}
-
+	//02.
 	if (channel->hangup_cause || channel->state >= CS_HANGUP) {
 		return SWITCH_STATUS_FALSE;
 	}
-
+	//03.
 	if (switch_channel_test_flag(channel, CF_ANSWERED)) {
 		return SWITCH_STATUS_SUCCESS;
 	}
-
-	msg.message_id = SWITCH_MESSAGE_INDICATE_ANSWER;
+	//04.准备生成answer
+	msg.message_id = SWITCH_MESSAGE_INDICATE_ANSWER;//
 	msg.from = channel->name;
 	status = switch_core_session_perform_receive_message(channel->session, &msg, file, func, line);
 
-
+	//05.
 	if (status == SWITCH_STATUS_SUCCESS) {
-		switch_channel_perform_mark_answered(channel, file, func, line);
+		switch_channel_perform_mark_answered(channel, file, func, line);//如果已经answer，则处理answer相关事件
 		if (!switch_channel_test_flag(channel, CF_EARLY_MEDIA)) {
 			switch_channel_audio_sync(channel);
 		}
@@ -3824,7 +3835,7 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_answer(switch_channel_t *
 		switch_channel_hangup(channel, SWITCH_CAUSE_INCOMPATIBLE_DESTINATION);
 	}
 
-
+	//06.
 	if (switch_core_session_in_thread(channel->session) && !switch_channel_test_flag(channel, CF_PROXY_MODE) &&
 		!switch_channel_test_flag(channel, CF_HAS_TEXT)) {
 		const char *delay;
@@ -3851,7 +3862,7 @@ SWITCH_DECLARE(switch_status_t) switch_channel_perform_answer(switch_channel_t *
 	c = data + cpos;\
 	memset(c, 0, olen - cpos);\
 	}}                           \
-
+//tiger 如何展开变量呢?
 SWITCH_DECLARE(char *) switch_channel_expand_variables_check(switch_channel_t *channel, const char *in, switch_event_t *var_list, switch_event_t *api_list, uint32_t recur)
 {
 	char *p, *c = NULL;

@@ -1671,7 +1671,7 @@ SWITCH_DECLARE(switch_xml_t) switch_xml_parse_file(const char *file)
 
 	return xml;
 }
-
+//TIGER XML
 SWITCH_DECLARE(switch_status_t) switch_xml_locate(const char *section,
 												  const char *tag_name,
 												  const char *key_name,
@@ -1686,17 +1686,18 @@ SWITCH_DECLARE(switch_status_t) switch_xml_locate(const char *section,
 	switch_xml_section_t sections = BINDINGS ? switch_xml_parse_section_string(section) : 0;
 
 	switch_thread_rwlock_rdlock(B_RWLOCK);
-
+//01.
 	for (binding = BINDINGS; binding; binding = binding->next) {
 		if (binding->sections && !(sections & binding->sections)) {
 			continue;
 		}
-
+//
 		if ((xml = binding->function(section, tag_name, key_name, key_value, params, binding->user_data))) {
 			const char *err = NULL;
 
 			err = switch_xml_error(xml);
 			if (zstr(err)) {
+//				
 				if ((conf = switch_xml_find_child(xml, "section", "name", "result"))) {
 					switch_xml_t p;
 					const char *aname;
@@ -1722,6 +1723,7 @@ SWITCH_DECLARE(switch_status_t) switch_xml_locate(const char *section,
 
 	for (;;) {
 		if (!xml) {
+//02.			
 			if (!(xml = switch_xml_root())) {
 				*node = NULL;
 				*root = NULL;
@@ -2409,7 +2411,7 @@ SWITCH_DECLARE(switch_status_t) switch_xml_destroy(void)
 
 	return status;
 }
-
+//TIGER XML
 SWITCH_DECLARE(switch_xml_t) switch_xml_open_cfg(const char *file_path, switch_xml_t *node, switch_event_t *params)
 {
 	switch_xml_t xml = NULL, cfg = NULL;
@@ -2417,7 +2419,7 @@ SWITCH_DECLARE(switch_xml_t) switch_xml_open_cfg(const char *file_path, switch_x
 	*node = NULL;
 
 	assert(MAIN_XML_ROOT != NULL);
-
+//tiger xml 查询配置文件，这个一般在freeswitch.xml
 	if (switch_xml_locate("configuration", "configuration", "name", file_path, &xml, &cfg, params, SWITCH_FALSE) == SWITCH_STATUS_SUCCESS) {
 		*node = cfg;
 	}

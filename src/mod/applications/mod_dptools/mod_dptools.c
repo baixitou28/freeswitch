@@ -38,7 +38,7 @@
  *
  */
 #include <switch.h>
-
+//TIGER mod_dptools 函数作用看注释
 SWITCH_MODULE_LOAD_FUNCTION(mod_dptools_load);
 SWITCH_MODULE_SHUTDOWN_FUNCTION(mod_dptools_shutdown);
 SWITCH_MODULE_DEFINITION(mod_dptools, mod_dptools_load, mod_dptools_shutdown, NULL);

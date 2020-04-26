@@ -50,7 +50,7 @@ typedef enum {
 } switch_nat_ip_proto_t;
 
 SWITCH_DECLARE(const char *) switch_nat_get_type(void);
-
+//TIGER switch_nat_ NAT¥¶¿Ì
 /*!
   \brief Initilize the NAT Traversal System
   \param pool the memory pool to use for long term allocations

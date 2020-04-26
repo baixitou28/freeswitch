@@ -41,7 +41,7 @@
  */
 #include <mod_conference.h>
 
-
+//tiger 这是会议fs_cli命令入口，
 api_command_t conference_api_sub_commands[] = {
 	{"count", (void_fn_t) & conference_api_sub_count, CONF_API_SUB_ARGS_SPLIT, "count", ""},
 	{"list", (void_fn_t) & conference_api_sub_list, CONF_API_SUB_ARGS_SPLIT, "list", "[delim <string>]|[count]"},
@@ -129,8 +129,8 @@ api_command_t conference_api_sub_commands[] = {
 switch_status_t conference_api_sub_pause_play(conference_obj_t *conference, switch_stream_handle_t *stream, int argc, char **argv)
 {
 	if (argc == 2) {
-		switch_mutex_lock(conference->mutex);
-		conference_fnode_toggle_pause(conference->fnode, stream);
+		switch_mutex_lock(conference->mutex);//整个会议
+		conference_fnode_toggle_pause(conference->fnode, stream);//设置状态
 		switch_mutex_unlock(conference->mutex);
 
 		return SWITCH_STATUS_SUCCESS;
@@ -140,7 +140,7 @@ switch_status_t conference_api_sub_pause_play(conference_obj_t *conference, swit
 		uint32_t id = atoi(argv[2]);
 		conference_member_t *member;
 
-		if ((member = conference_member_get(conference, id))) {
+		if ((member = conference_member_get(conference, id))) {//某个成员
 			switch_mutex_lock(member->fnode_mutex);
 			conference_fnode_toggle_pause(member->fnode, stream);
 			switch_mutex_unlock(member->fnode_mutex);
@@ -739,7 +739,7 @@ switch_status_t conference_api_sub_deaf(conference_member_t *member, switch_stre
 	if (member == NULL)
 		return SWITCH_STATUS_GENERR;
 
-	conference_utils_member_clear_flag_locked(member, MFLAG_CAN_HEAR);
+	conference_utils_member_clear_flag_locked(member, MFLAG_CAN_HEAR);//设置标志位，看哪里在引用？
 
 	if (!(data) || !strstr((char *) data, "quiet")) {
 		conference_utils_member_set_flag(member, MFLAG_INDICATE_DEAF);
@@ -2045,13 +2045,13 @@ switch_status_t conference_api_sub_count(conference_obj_t *conference, switch_st
 {
 
 	if (conference) {
-		conference_list_count_only(conference, stream);
+		conference_list_count_only(conference, stream);//会议中的成员个数
 	} else {
 		int count = 0;
 		switch_hash_index_t *hi;
 		switch_mutex_lock(conference_globals.hash_mutex);
 		for (hi = switch_core_hash_first(conference_globals.conference_hash); hi; hi = switch_core_hash_next(&hi)) {
-			count++;
+			count++;//所有会议人数
 		}
 		switch_mutex_unlock(conference_globals.hash_mutex);
 		stream->write_function(stream, "%d", count);
@@ -2757,20 +2757,20 @@ switch_status_t conference_api_sub_play(conference_obj_t *conference, switch_str
 	}
 
 	if (argc == 3) {
-		if (conference_file_play(conference, argv[2], 0, NULL, async) == SWITCH_STATUS_SUCCESS) {
-			stream->write_function(stream, "+OK (play) Playing file %s\n", argv[2]);
+		if (conference_file_play(conference, argv[2], 0, NULL, async) == SWITCH_STATUS_SUCCESS) {//播放文件
+			stream->write_function(stream, "+OK (play) Playing file %s\n", argv[2]);//fs_cli里写状态
 			if (test_eflag(conference, EFLAG_PLAY_FILE) &&
 				switch_event_create_subclass(&event, SWITCH_EVENT_CUSTOM, CONF_EVENT_MAINT) == SWITCH_STATUS_SUCCESS) {
-				conference_event_add_data(conference, event);
+				conference_event_add_data(conference, event);//构建事件
 
 				if (conference->fnode && conference->fnode->fh.params) {
-					switch_event_merge(event, conference->fnode->fh.params);
+					switch_event_merge(event, conference->fnode->fh.params);//如何merge不知道
 				}
 
 				switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Action", "play-file");
 				switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "File", argv[2]);
 				switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Async", async ? "true" : "false");
-				switch_event_fire(&event);
+				switch_event_fire(&event);//发送事件
 			}
 		} else {
 			stream->write_function(stream, "-ERR (play) File: %s not found.\n", argv[2] ? argv[2] : "(unspecified)");

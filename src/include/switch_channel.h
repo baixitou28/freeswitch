@@ -80,7 +80,7 @@ SWITCH_DECLARE(int) switch_channel_check_signal(switch_channel_t *channel, switc
   \return true if the channel is ready
 */
 SWITCH_DECLARE(int) switch_channel_test_ready(switch_channel_t *channel, switch_bool_t check_ready, switch_bool_t check_media);
-
+//TIGER switch_channel_  ¿çÆ½Ì¨º¯Êý
 #define switch_channel_ready(_channel) switch_channel_test_ready(_channel, SWITCH_TRUE, SWITCH_FALSE)
 #define switch_channel_media_ready(_channel) switch_channel_test_ready(_channel, SWITCH_TRUE, SWITCH_TRUE)
 #define switch_channel_media_up(_channel) (switch_channel_test_flag(_channel, CF_ANSWERED) || switch_channel_test_flag(_channel, CF_EARLY_MEDIA))

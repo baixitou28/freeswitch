@@ -42,12 +42,12 @@
 #define kRFC2833PT "rfc2833_pt"
 #define kMODE "mode"
 #define kRATE "rate"
-
+//TIGER
 static struct {
     switch_memory_pool_t *pool;
     switch_endpoint_interface_t *endpoint_interface;
 } crtp;
-
+//TIGER
 typedef struct {
     switch_core_session_t *session;
     switch_channel_t *channel;
@@ -94,7 +94,7 @@ static switch_status_t channel_write_frame(switch_core_session_t *session, switc
 static switch_status_t channel_receive_message(switch_core_session_t *session, switch_core_session_message_t *msg);
 static switch_status_t channel_send_dtmf(switch_core_session_t *session, const switch_dtmf_t *dtmf);
 static switch_status_t channel_receive_event(switch_core_session_t *session, switch_event_t *event);
-
+//tiger rtp on_xxx事件的函数指针
 switch_state_handler_table_t crtp_state_handlers = {
 	/*on_init */channel_on_init,
 	/*on_routing */ NULL,
@@ -110,7 +110,7 @@ switch_state_handler_table_t crtp_state_handlers = {
 	/*on_destroy*/ channel_on_destroy
 
 };
-
+//tiger rtp io函数指针
 switch_io_routines_t crtp_io_routines = {
 	/*outgoing_channel*/ channel_outgoing_channel,
 	/*read_frame*/ channel_read_frame,
@@ -129,12 +129,12 @@ switch_io_routines_t crtp_io_routines = {
 
 };
 
-
+//初始化 理解rtp的入口
 void crtp_init(switch_loadable_module_interface_t *module_interface)
 {
     switch_endpoint_interface_t *endpoint_interface;
     //switch_api_interface_t *api_interface;
-
+    
     crtp.pool = module_interface->pool;
     endpoint_interface = switch_loadable_module_create_interface(module_interface, SWITCH_ENDPOINT_INTERFACE);
     endpoint_interface->interface_name = "rtp";
@@ -144,7 +144,7 @@ void crtp_init(switch_loadable_module_interface_t *module_interface)
 
     //SWITCH_ADD_API(api_interface, "rtp_test", "test", test_function, "");
 }
-
+//TIGER  用var_event 的信息创建一个新的new_session和channel，并启动线程
 static switch_call_cause_t channel_outgoing_channel(switch_core_session_t *session, switch_event_t *var_event,
 													switch_caller_profile_t *outbound_profile,
 													switch_core_session_t **new_session,
@@ -159,7 +159,7 @@ static switch_call_cause_t channel_outgoing_channel(switch_core_session_t *sessi
 
     const char *err;
 
-
+    //通过switch_event_t结构体得到大部分信息
     const char  *local_addr = switch_event_get_header_nil(var_event, kLOCALADDR),
                 *szlocal_port = switch_event_get_header_nil(var_event, kLOCALPORT),
                 *remote_addr = switch_event_get_header_nil(var_event, kREMOTEADDR),
@@ -174,7 +174,7 @@ static switch_call_cause_t channel_outgoing_channel(switch_core_session_t *sessi
 
     switch_port_t local_port = !zstr(szlocal_port) ? (switch_port_t)atoi(szlocal_port) : 0,
                  remote_port = !zstr(szremote_port) ? (switch_port_t)atoi(szremote_port) : 0;
-
+    //这个我用的少:ptime gives the length of time in milliseconds represented by themedia in a packet
     int ptime  = !zstr(szptime) ? atoi(szptime) : 0,
         //rfc2833_pt = !zstr(szrfc2833_pt) ? atoi(szrfc2833_pt) : 0,
         rate = !zstr(szrate) ? atoi(szrate) : 8000,
@@ -189,14 +189,14 @@ static switch_call_cause_t channel_outgoing_channel(switch_core_session_t *sessi
         goto fail;
     }
 
-
+    //如果没有uuid，创建session
     if (!(*new_session = switch_core_session_request(crtp.endpoint_interface, SWITCH_CALL_DIRECTION_OUTBOUND, 0, pool))) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Couldn't request session.\n");
         goto fail;
     }
-
+    //得到channel指针而已
     channel = switch_core_session_get_channel(*new_session);
-
+    //
     tech_pvt = switch_core_session_alloc(*new_session, sizeof *tech_pvt);
     tech_pvt->session = *new_session;
     tech_pvt->channel = channel;
@@ -207,27 +207,27 @@ static switch_call_cause_t channel_outgoing_channel(switch_core_session_t *sessi
     tech_pvt->ptime = ptime;
     tech_pvt->agreed_pt = (switch_payload_t)pt;
     tech_pvt->dtmf_type = DTMF_2833; /* XXX */
-
+    //
     if (zstr(local_addr) || local_port == 0) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "The local address and port must be set\n");
         goto fail;
-    } else if (zstr(remote_addr) || remote_port == 0) {
+    } else if (zstr(remote_addr) || remote_port == 0) {//TIGER 这个我一般没有处理
         tech_pvt->mode = RTP_RECVONLY;
     } else {
         tech_pvt->mode = RTP_SENDRECV;
     }
-
+    //类的实例
     switch_core_session_set_private(*new_session, tech_pvt);
-
+    //profile是sip解析后的信息
     caller_profile = switch_caller_profile_clone(*new_session, outbound_profile);
     switch_channel_set_caller_profile(channel, caller_profile);
 
 
     snprintf(name, sizeof(name), "rtp/%s", outbound_profile->destination_number);
 	switch_channel_set_name(channel, name);
-
+    //设置CS_INIT
     switch_channel_set_state(channel, CS_INIT);
-
+    //解码器初始化
 	if (switch_core_codec_init(&tech_pvt->read_codec,
 							   codec,
 							   NULL,
@@ -253,29 +253,29 @@ static switch_call_cause_t channel_outgoing_channel(switch_core_session_t *sessi
             goto fail;
 		}
 	}
-
+    //设置
     if (switch_core_session_set_read_codec(*new_session, &tech_pvt->read_codec) != SWITCH_STATUS_SUCCESS) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Can't set read codec?\n");
         goto fail;
     }
-
+    //设置
     if (switch_core_session_set_write_codec(*new_session, &tech_pvt->write_codec) != SWITCH_STATUS_SUCCESS) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Can't set write codec?\n");
         goto fail;
     }
-
+    //创建新的rtp
     if (!(tech_pvt->rtp_session = switch_rtp_new(local_addr, local_port, remote_addr, remote_port, tech_pvt->agreed_pt,
 												 tech_pvt->read_codec.implementation->samples_per_packet, ptime * 1000,
 												 rtp_flags, "soft", &err, switch_core_session_get_pool(*new_session)))) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Couldn't setup RTP session: [%s]\n", err);
         goto fail;
     }
-
+    //启动线程
     if (switch_core_session_thread_launch(*new_session) != SWITCH_STATUS_SUCCESS) {
         switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Couldn't start session thread.\n");
         goto fail;
     }
-
+    //标记channel，已经
     switch_channel_mark_answered(channel);
 
     return SWITCH_CAUSE_SUCCESS;
@@ -296,17 +296,17 @@ fail:
     }
     return SWITCH_CAUSE_DESTINATION_OUT_OF_ORDER;
 }
-
+//标记状态为CS_CONSUME_MEDIA
 static switch_status_t channel_on_init(switch_core_session_t *session)
 {
 
     switch_channel_t *channel = switch_core_session_get_channel(session);
-
+    //标记已进入CS_CONSUME_MEDIA阶段
     switch_channel_set_state(channel, CS_CONSUME_MEDIA);
 
     return SWITCH_STATUS_FALSE;
 }
-
+//析构，主要是释放codec
 static switch_status_t channel_on_destroy(switch_core_session_t *session)
 {
     crtp_private_t *tech_pvt = NULL;
@@ -325,7 +325,7 @@ static switch_status_t channel_on_destroy(switch_core_session_t *session)
     return SWITCH_STATUS_SUCCESS;
 }
 
-
+//TIGER 读一帧，具体实现是tech_pvt结构里
 static switch_status_t channel_read_frame(switch_core_session_t *session, switch_frame_t **frame, switch_io_flag_t flags, int stream_id)
 {
     crtp_private_t *tech_pvt;
@@ -337,24 +337,24 @@ static switch_status_t channel_read_frame(switch_core_session_t *session, switch
 
 	tech_pvt = switch_core_session_get_private(session);
 	assert(tech_pvt != NULL);
-
+    //如果是只读得，休眠20ms再说，再标记SFF_CNG，以便后续处理能理解   
     if (!tech_pvt->rtp_session || tech_pvt->mode == RTP_SENDONLY) {
 	switch_yield(20000); /* replace by local timer XXX */
-        goto cng;
+        goto cng;//Comfort Noise Generator
     }
-
+    //如果有dtmf音,哪里插入的？
     if (switch_rtp_has_dtmf(tech_pvt->rtp_session)) {
         switch_dtmf_t dtmf = { 0 };
         switch_rtp_dequeue_dtmf(tech_pvt->rtp_session, &dtmf);
         switch_channel_queue_dtmf(channel, &dtmf);
     }
-
+    //读一帧
     tech_pvt->read_frame.flags = SFF_NONE;
     tech_pvt->read_frame.codec = &tech_pvt->read_codec;
     status = switch_rtp_zerocopy_read_frame(tech_pvt->rtp_session, &tech_pvt->read_frame, flags);
 
     if (status != SWITCH_STATUS_SUCCESS && status != SWITCH_STATUS_BREAK) {
-        goto cng;
+        goto cng;//如果不是停止，就cng一下 comfort noise generation (CNG)
     }
 
     *frame = &tech_pvt->read_frame;
@@ -363,12 +363,12 @@ static switch_status_t channel_read_frame(switch_core_session_t *session, switch
 cng:
     *frame = &tech_pvt->read_frame;
     tech_pvt->read_frame.codec = &tech_pvt->read_codec;
-    tech_pvt->read_frame.flags |= SFF_CNG;
+    tech_pvt->read_frame.flags |= SFF_CNG;//标记就ok了。
     tech_pvt->read_frame.datalen = 0;
 
     return SWITCH_STATUS_SUCCESS;
 }
-
+//让switch_rtp_write_frame来写
 static switch_status_t channel_write_frame(switch_core_session_t *session, switch_frame_t *frame, switch_io_flag_t flags, int stream_id)
 {
     crtp_private_t *tech_pvt;
@@ -403,7 +403,7 @@ static switch_status_t channel_write_frame(switch_core_session_t *session, switc
 
     return SWITCH_STATUS_SUCCESS;
 }
-
+//
 static switch_status_t channel_send_dtmf(switch_core_session_t *session, const switch_dtmf_t *dtmf)
 {
 	crtp_private_t *tech_pvt = NULL;
@@ -426,7 +426,7 @@ static switch_status_t channel_send_dtmf(switch_core_session_t *session, const s
 
     return SWITCH_STATUS_SUCCESS;
 }
-
+//
 static switch_bool_t compare_var(switch_event_t *event, switch_channel_t *channel, const char *varname)
 {
     const char *chan_val = switch_channel_get_variable_dup(channel, varname, SWITCH_FALSE, -1);
@@ -438,9 +438,9 @@ static switch_bool_t compare_var(switch_event_t *event, switch_channel_t *channe
 
     return strcasecmp(chan_val, event_val);
 }
-
+//tiger media modify 客户端reinvite时候导致sdp更改
 static switch_status_t channel_receive_event(switch_core_session_t *session, switch_event_t *event)
-{
+{//得到event的相关信息
     const char *command = switch_event_get_header(event, "command");
     switch_channel_t *channel = switch_core_session_get_channel(session);
     crtp_private_t *tech_pvt = switch_core_session_get_private(session);
@@ -453,7 +453,7 @@ static switch_status_t channel_receive_event(switch_core_session_t *session, swi
 		rate = !zstr(szrate) ? atoi(szrate) : 8000,
 		pt = !zstr(szpt) ? atoi(szpt) : 0;
 
-
+    //如果media modify 
     if (!zstr(command) && !strcasecmp(command, "media_modify")) {
         /* Compare parameters */
         if (compare_var(event, channel, kREMOTEADDR) ||
@@ -466,7 +466,7 @@ static switch_status_t channel_receive_event(switch_core_session_t *session, swi
 
             switch_channel_set_variable(channel, kREMOTEADDR, remote_addr);
             switch_channel_set_variable(channel, kREMOTEPORT, szremote_port);
-
+            //关闭老的端口，创建新的
             if (switch_rtp_set_remote_address(tech_pvt->rtp_session, remote_addr, remote_port, 0, SWITCH_TRUE, &err) != SWITCH_STATUS_SUCCESS) {
                 switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_ERROR, "Error setting RTP remote address: %s\n", err);
             } else {
@@ -474,7 +474,7 @@ static switch_status_t channel_receive_event(switch_core_session_t *session, swi
                 tech_pvt->mode = RTP_SENDRECV;
             }
         }
-
+        //codec是否改变，改了需要重新初始化
         if (compare_var(event, channel, kCODEC) ||
             compare_var(event, channel, kPTIME) ||
             compare_var(event, channel, kPT) ||
@@ -507,21 +507,21 @@ static switch_status_t channel_receive_event(switch_core_session_t *session, swi
 				goto fail;
 			}
 		}
-
+        //好像并没有删除老的codec?
 		if (switch_core_session_set_read_codec(session, &tech_pvt->read_codec) != SWITCH_STATUS_SUCCESS) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Can't set read codec?\n");
 			goto fail;
 		}
-
+		//好像并没有删除老的codec?
 		if (switch_core_session_set_write_codec(session, &tech_pvt->write_codec) != SWITCH_STATUS_SUCCESS) {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Can't set write codec?\n");
 			goto fail;
 		}
-
+        //payload type
 		switch_rtp_set_default_payload(tech_pvt->rtp_session, (switch_payload_t)pt);
 		//switch_rtp_set_recv_pt(tech_pvt->rtp_session, pt);
 	}
-
+        //
         if (compare_var(event, channel, kRFC2833PT)) {
             const char *szpt = switch_channel_get_variable(channel, kRFC2833PT);
             int pt = !zstr(szpt) ? atoi(szpt) : 0;
@@ -549,7 +549,7 @@ fail:
 
     return SWITCH_STATUS_FALSE;
 }
-
+//tiger 不是很理解，是通过消息来设置rtp的状态?
 static switch_status_t channel_receive_message(switch_core_session_t *session, switch_core_session_message_t *msg)
 {
     crtp_private_t *tech_pvt = NULL;

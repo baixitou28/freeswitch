@@ -71,7 +71,7 @@ SWITCH_BEGIN_EXTERN_C
 	SWITCH_XML_TXTM = (1 << 2),	// txt is malloced
 	SWITCH_XML_DUP = (1 << 3)	// attribute name and value are strduped
 } switch_xml_flag_t;
-
+//TIGER switch_xml_  xmlº¯Êý
 /*! \brief A representation of an XML tree */
 struct switch_xml {
 	/*! tag name */

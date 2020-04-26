@@ -201,7 +201,7 @@ typedef enum {
 	MFLAG_INDICATE_MUTE_DETECT,
 	MFLAG_PAUSE_RECORDING,
 	MFLAG_ACK_VIDEO,
-	MFLAG_GHOST,
+	MFLAG_GHOST,//tiger 或许监听会议是个不错的选择
 	MFLAG_JOIN_ONLY,
 	MFLAG_POSITIONAL,
 	MFLAG_NO_POSITIONAL,
@@ -860,7 +860,7 @@ struct conference_member {
 	switch_mutex_t *layer_cond_mutex;
 	cJSON *json;
 	cJSON *status_field;
-	uint8_t loop_loop;
+	uint8_t loop_loop;//含义:是否允许再次进入loop
 	al_handle_t *al;
 	int last_speech_channels;
 	int video_layer_id;

@@ -424,7 +424,7 @@ void switch_core_state_machine_init(switch_memory_pool_t *pool)
 {
 	return;
 }
-
+//tiger  application_state_handler, driver_state_handler
 #define STATE_MACRO(__STATE, __STATE_STR)						do {	\
 		midstate = state;												\
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "(%s) State %s\n", switch_channel_get_name(session->channel), __STATE_STR); \
@@ -527,7 +527,7 @@ static void check_presence(switch_core_session_t *session)
 }
 
 
-
+//TIGER 状态机，直到CS_DESTROY，才会退出
 SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 {
 	switch_channel_state_t state = CS_NEW, midstate = CS_DESTROY, endstate;
@@ -563,9 +563,9 @@ SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 
 	switch_mutex_lock(session->mutex);
 
-	while ((state = switch_channel_get_state(session->channel)) != CS_DESTROY) {
+	while ((state = switch_channel_get_state(session->channel)) != CS_DESTROY) {///直到CS_DESTROY就会退出
 
-		if (switch_channel_test_flag(session->channel, CF_BLOCK_STATE)) {
+		if (switch_channel_test_flag(session->channel, CF_BLOCK_STATE)) {//谁来block
 			switch_channel_wait_for_flag(session->channel, CF_BLOCK_STATE, SWITCH_FALSE, 0, NULL);
 			if ((state = switch_channel_get_state(session->channel)) == CS_DESTROY) {
 				break;
@@ -573,7 +573,7 @@ SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 		}
 
 		midstate = state;
-		if (state != switch_channel_get_running_state(session->channel) || state >= CS_HANGUP) {
+		if (state != switch_channel_get_running_state(session->channel) || state >= CS_HANGUP) {//呼叫状态有变化
 			int index = 0;
 			int proceed = 1;
 			int global_proceed = 1;
@@ -587,7 +587,7 @@ SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 			switch_ivr_parse_all_messages(session);
 
 			if (session->endpoint_interface->io_routines->state_run) {
-				rstatus = session->endpoint_interface->io_routines->state_run(session);
+				rstatus = session->endpoint_interface->io_routines->state_run(session);//这里有什么状态？
 			}
 
 			if (rstatus == SWITCH_STATUS_SUCCESS) {
@@ -597,8 +597,9 @@ SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 					}
 				}
 			}
-
+			//根据不同状态，打印日志，发送事件
 			switch (state) {
+//一开始是CS_NEW				
 			case CS_NEW:		/* Just created, Waiting for first instructions */
 				switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_DEBUG, "(%s) State NEW\n", switch_channel_get_name(session->channel));
 				break;
@@ -623,9 +624,9 @@ SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 			case CS_INIT:		/* Basic setup tasks */
 				{
 					switch_event_t *event;
-
+//tiger STATE_MACRO写得简洁
 					STATE_MACRO(init, "INIT");
-
+//生成事件
 					if (switch_event_create(&event, SWITCH_EVENT_CHANNEL_CREATE) == SWITCH_STATUS_SUCCESS) {
 						switch_channel_event_set_data(session->channel, event);
 						switch_event_fire(&event);
@@ -683,7 +684,7 @@ SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 			if (endstate == CS_NEW) {
 				switch_yield(20000);
 				switch_ivr_parse_all_events(session);
-				if (!--new_loops) {
+				if (!--new_loops) {//初始new_loops = 500，500* 20ms=10秒，所以不能卡在CS_NEW 10秒以上
 					switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(session), SWITCH_LOG_WARNING, "%s %s Abandoned\n",
 									  session->uuid_str, switch_core_session_get_name(session));
 					switch_channel_set_flag(session->channel, CF_NO_CDR);
@@ -691,7 +692,7 @@ SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 				}
 			} else {
 				switch_channel_state_thread_lock(session->channel);
-
+				//获取channel的锁后，处理所有消息和事件
 				switch_ivr_parse_all_events(session);
 
 				if (switch_channel_test_flag(session->channel, CF_STATE_REPEAT)) {
@@ -709,7 +710,7 @@ SWITCH_DECLARE(void) switch_core_session_run(switch_core_session_t *session)
 				}
 
 				switch_channel_state_thread_unlock(session->channel);
-
+				//没有channel锁，处理所有事件  ：有啥区别？
 				switch_ivr_parse_all_events(session);
 			}
 		}
