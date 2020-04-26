@@ -91,7 +91,7 @@ static msg_update_f sip_session_expires_update;
 msg_hclass_t sip_session_expires_class[] =
 SIP_HEADER_CLASS(session_expires, "Session-Expires", "x", x_params, single,
 		 session_expires);
-
+//TIGER DECODE
 issize_t sip_session_expires_d(su_home_t *home, sip_header_t *h, char *s, isize_t slen)
 {
   sip_session_expires_t *x = h->sh_session_expires;
@@ -105,7 +105,7 @@ issize_t sip_session_expires_d(su_home_t *home, sip_header_t *h, char *s, isize_
   }
   return 0;
 }
-
+// TIGER ENCODE
 issize_t sip_session_expires_e(char b[], isize_t bsiz, sip_header_t const *h, int flags)
 {
   char *end = b + bsiz, *b0 = b;

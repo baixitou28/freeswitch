@@ -166,7 +166,7 @@ struct register_usage {
 
   outbound_t *nr_ob;	/**< Outbound connection */
 };
-
+//usage函数指针:  不是特别理解usage
 nua_usage_class const nua_register_usage[1] = {
   {
     sizeof (struct register_usage),
@@ -179,12 +179,13 @@ nua_usage_class const nua_register_usage[1] = {
     nua_register_usage_refresh,
     nua_register_usage_shutdown
   }};
-
+//名称
 static char const *nua_register_usage_name(nua_dialog_usage_t const *du)
 {
   return "register";
 }
-
+//三个要素
+//
 static int nua_register_usage_add(nua_handle_t *nh,
 				  nua_dialog_state_t *ds,
 				  nua_dialog_usage_t *du)
@@ -201,7 +202,7 @@ static int nua_register_usage_add(nua_handle_t *nh,
   return 0;
 }
 
-
+//
 static void nua_register_usage_remove(nua_handle_t *nh,
 				      nua_dialog_state_t *ds,
 				      nua_dialog_usage_t *du,
@@ -274,7 +275,7 @@ static int nua_stack_outbound_failed(nua_handle_t *,
 				     tag_type_t tag, tag_value_t value, ...);
 
 static int nua_stack_outbound_credentials(nua_handle_t *, auth_client_t **auc);
-
+//TIGER 实现方式不一样
 outbound_owner_vtable nua_stack_outbound_callbacks = {
     sizeof nua_stack_outbound_callbacks,
     /* oo_contact */ nua_handle_contact_by_via,
@@ -578,7 +579,7 @@ static int nua_register_client_check_restart(nua_client_request_t *cr,
 static int nua_register_client_response(nua_client_request_t *cr,
 					int status, char const *phrase,
 					sip_t const *sip);
-
+//TIGER 注册函数指针
 static nua_client_methods_t const nua_register_client_methods = {
   SIP_METHOD_REGISTER,		/* crm_method, crm_method_name */
   0,				/* crm_extra */
@@ -704,7 +705,7 @@ static int nua_register_client_init(nua_client_request_t *cr,
 
   return 0;
 }
-
+//tiger 发送register
 static
 int nua_register_client_request(nua_client_request_t *cr,
 				msg_t *msg, sip_t *sip,
@@ -719,15 +720,15 @@ int nua_register_client_request(nua_client_request_t *cr,
   tport_t *tport = NULL;
 
   (void)nh;
-
+  //
   /* Explicit empty (NULL) contact - used for CPL store/remove? */
   if (!contacts && cr->cr_has_contact)
     return nua_base_client_request(cr, msg, sip, tags);
-
+  //
   if ((du && du->du_shutdown) ||
       (sip->sip_expires && sip->sip_expires->ex_delta == 0))
     nua_client_set_terminating(cr, 1);
-
+  //
   if (contacts) {
     if (!cr->cr_terminating) {
       for (m = contacts; m; m = m->m_next)
@@ -742,7 +743,7 @@ int nua_register_client_request(nua_client_request_t *cr,
   unreg = cr->cr_terminating;
 
   nr = nua_dialog_usage_private(du);
-
+  //
   if (nr) {
     if (nr->nr_ob) {
       outbound_stop_keepalive(nr->nr_ob);
@@ -763,7 +764,7 @@ int nua_register_client_request(nua_client_request_t *cr,
 
     tport = nr->nr_tport;
   }
-
+  //多个contact
   for (m = sip->sip_contact; m; m = m->m_next) {
     if (m->m_url->url_type == url_any) {
       /* If there is a '*' in contact list, remove everything else */
@@ -789,7 +790,7 @@ int nua_register_client_request(nua_client_request_t *cr,
       msg_header_replace_param(msg_home(msg), m->m_common, min_expires);
     }
   }
-
+  //发送
   return nua_base_client_trequest(cr, msg, sip,
 				  TAG_IF(unreg, SIPTAG_EXPIRES_STR("0")),
 #if 0
@@ -839,7 +840,7 @@ static int nua_register_client_check_restart(nua_client_request_t *cr,
 
   return 0;
 }
-
+//TIGER 
 static int nua_register_client_response(nua_client_request_t *cr,
 					int status, char const *phrase,
 					sip_t const *sip)
@@ -849,7 +850,7 @@ static int nua_register_client_response(nua_client_request_t *cr,
   nua_registration_t *nr = nua_dialog_usage_private(du);
   int ready;
 
-  ready = du && !cr->cr_terminated && status < 300;
+  ready = du && !cr->cr_terminated && status < 300;//判断status状态，看是否返回正常
 
   if (ready) {
     sip_time_t mindelta = 0;
@@ -857,7 +858,7 @@ static int nua_register_client_response(nua_client_request_t *cr,
 
     sip_contact_t const *m, *sent;
 
-    msg_t *_reqmsg = nta_outgoing_getrequest(cr->cr_orq);
+    msg_t *_reqmsg = nta_outgoing_getrequest(cr->cr_orq);//取原来的request
     sip_t *req = sip_object(_reqmsg);
 
     tport_t *tport;
@@ -886,20 +887,20 @@ static int nua_register_client_response(nua_client_request_t *cr,
 
     reqdelta = req->sip_expires ? req->sip_expires->ex_delta : 0;
 
-    for (m = sip->sip_contact; m; m = m->m_next) {
+    for (m = sip->sip_contact; m; m = m->m_next) {//多个contact地址处理
       if (m->m_url->url_type != url_sip &&
-	  m->m_url->url_type != url_sips)
+	  m->m_url->url_type != url_sips)//判断地址是否是sip或sips
 	continue;
 
       for (sent = req->sip_contact; sent; sent = sent->m_next) {
-	if (url_cmp(m->m_url, sent->m_url))
+	if (url_cmp(m->m_url, sent->m_url))//是否是request里面的地址
 	  continue;
 
-	if (sent->m_expires)
+	if (sent->m_expires)//如果有expires超时参数，以收到的超时参数为准
 	  mdelta = strtoul(sent->m_expires, NULL, 10);
 	else
 	  mdelta = reqdelta;
-
+    //检查mdelta是否合理
 	if (mdelta == 0)
 	  mdelta = 3600;
 
@@ -908,14 +909,14 @@ static int nua_register_client_response(nua_client_request_t *cr,
 	if (delta > 0 && delta < mindelta)
 	  mindelta = delta;
 
-	if (url_cmp_all(m->m_url, sent->m_url) == 0)
+	if (url_cmp_all(m->m_url, sent->m_url) == 0)//地址是否一致
 	  break;
       }
     }
 
     if (mindelta == SIP_TIME_MAX)
       mindelta = 3600;
-
+    //设置刷新时间
     nua_dialog_usage_set_refresh(du, mindelta);
 
   /*  RFC 3608 Section 6.1 Procedures at the UA
@@ -937,13 +938,13 @@ static int nua_register_client_response(nua_client_request_t *cr,
 
   */
     su_free(nh->nh_home, nr->nr_route);
-    nr->nr_route = sip_route_dup(nh->nh_home, sip->sip_service_route);
+    nr->nr_route = sip_route_dup(nh->nh_home, sip->sip_service_route);//为什么要复制
 
     {
       /* RFC 3327 */
       /* Store last URI in Path header */
       sip_path_t *path = sip->sip_path;
-
+      //TIGER PATH不理解
       while (path && path->r_next)
 	path = path->r_next;
 
@@ -956,12 +957,12 @@ static int nua_register_client_response(nua_client_request_t *cr,
 
     if (sip->sip_to->a_url->url_type == url_sips)
       nr->nr_secure = 1;
-
+    //
     if (nr->nr_ob) {
       outbound_gruuize(nr->nr_ob, sip);
       outbound_start_keepalive(nr->nr_ob, cr->cr_orq);
     }
-
+    //端口
     tport = nta_outgoing_transport (cr->cr_orq);
 
     /* cache persistant connection for registration */
@@ -982,17 +983,17 @@ static int nua_register_client_response(nua_client_request_t *cr,
     }
     else
       tport_unref(tport);    /* note: nta_outgoing_transport() makes a ref */
-
+    //标识register ok
     nua_registration_set_ready(nr, 1);
   }
-  else if (du) {
+  else if (du) {//如果异常，释放资源
     nua_dialog_usage_reset_refresh(du);
 
     su_free(nh->nh_home, nr->nr_route);
     nr->nr_route = NULL;
-
+    //停止keepalive//TIGER ? 这个是什么
     outbound_stop_keepalive(nr->nr_ob);
-
+    //释放端口
     /* release the persistant transport for registration */
     if (nr->nr_tport) {
       if (nr->nr_error_report_id) {
@@ -1003,7 +1004,7 @@ static int nua_register_client_response(nua_client_request_t *cr,
 
       tport_unref(nr->nr_tport), nr->nr_tport = NULL;
     }
-    nua_registration_set_ready(nr, 0);
+    nua_registration_set_ready(nr, 0);//标识没有ready
   }
 
 
@@ -1027,7 +1028,7 @@ void nua_register_connection_closed(tp_stack_t *sip_stack,
 
   du = NUA_DIALOG_USAGE_PUBLIC(nr);
   pending = nr->nr_error_report_id;
-
+  //释放端口
   if (tport_release(tport, pending, NULL, NULL, nr, 0) < 0)
     SU_DEBUG_1(("nua_register: tport_release() failed\n" VA_NONE));
   nr->nr_error_report_id = 0;
@@ -1042,7 +1043,7 @@ void nua_register_connection_closed(tp_stack_t *sip_stack,
 	      error != 0 ? su_strerror(error) : ""));
 
   tport_unref(nr->nr_tport), nr->nr_tport = NULL;
-
+  //直接 register 0
   /* Schedule re-REGISTER immediately */
   nua_dialog_usage_set_refresh_range(du, 0, 0);
 }
@@ -1083,20 +1084,20 @@ nua_register_usage_update_params(nua_dialog_usage_t const *du,
   }
 }
 
-
+//定时刷新
 static void nua_register_usage_refresh(nua_handle_t *nh,
 				       nua_dialog_state_t *ds,
 				       nua_dialog_usage_t *du,
 				       sip_time_t now)
 {
   nua_t *nua = nh->nh_nua;
-  nua_client_request_t *cr = du->du_cr;
+  nua_client_request_t *cr = du->du_cr;//cr： client request
 
-  if (cr) {
+  if (cr) {//TIGER
     if (nua_client_resend_request(cr, 0) >= 0)
       return;
   }
-
+  //如果没有cr，说明已经退出了，发送事件
   /* Report that we have de-registered */
   nua_stack_event(nua, nh, NULL, nua_r_register, NUA_ERROR_AT(__FILE__, __LINE__), NULL);
   nua_dialog_usage_remove(nh, ds, du, NULL, NULL);

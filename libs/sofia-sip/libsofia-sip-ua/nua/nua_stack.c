@@ -740,13 +740,13 @@ void nua_stack_timer(nua_t *nua, su_timer_t *t, su_timer_arg_t *a)
   }
 }
 
-
+//TIGER
 static
 int nh_call_pending(nua_handle_t *nh, sip_time_t now)
 {
   nua_dialog_state_t *ds = nh->nh_ds;
   nua_dialog_usage_t *du;
-  sip_time_t next = now + NUA_STACK_TIMER_INTERVAL / 1000;
+  sip_time_t next = now + NUA_STACK_TIMER_INTERVAL / 1000;//¾«¶ÈÊÇ1msÂð£¿
 
   for (du = ds->ds_usage; du; du = du->du_next) {
     if (now == 0)

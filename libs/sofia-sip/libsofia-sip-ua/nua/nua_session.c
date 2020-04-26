@@ -702,11 +702,11 @@ extern nua_client_methods_t const nua_bye_client_methods;
 extern nua_client_methods_t const nua_cancel_client_methods;
 extern nua_client_methods_t const nua_update_client_methods;
 extern nua_client_methods_t const nua_prack_client_methods;
-
+//TIGER invite 函数 //TIGER SIP 
 int nua_stack_invite(nua_t *nua, nua_handle_t *nh, nua_event_t e,
 		     tagi_t const *tags)
 {
-  return nua_client_create(nh, e, &nua_invite_client_methods, tags);
+  return nua_client_create(nh, e, &nua_invite_client_methods, tags);//TIGER 
 }
 
 static int nua_invite_client_init(nua_client_request_t *cr,
@@ -775,33 +775,33 @@ static int nua_invite_client_request(nua_client_request_t *cr,
   nua_session_usage_t *ss;
   int offer_sent = 0, retval;
   sip_time_t invite_timeout;
-
+  //TIGER 
   if (du == NULL)		/* Call terminated */
     return nua_client_return(cr, SIP_481_NO_TRANSACTION, msg);
-
+  //结构体
   ss = NUA_DIALOG_USAGE_PRIVATE(du);
-
+  //已经结束状态
   if (ss->ss_state >= nua_callstate_terminating)
     return nua_client_return(cr, 900, "Session is terminating", msg);
-
-  invite_timeout = NH_PGET(nh, invite_timeout);
+  //invite 超时
+  invite_timeout = NH_PGET(nh, invite_timeout);//TIGER 
   if (invite_timeout == 0)
-    invite_timeout = UINT_MAX;
+    invite_timeout = UINT_MAX;//如果invite_timeout 设置为0，不处理invite不响应
   /* Send CANCEL if we don't get response within timeout*/
-  /* nua_dialog_usage_set_expires(du, invite_timeout); Xyzzy */
+  /* nua_dialog_usage_set_expires(du, invite_timeout); Xyzzy */ //TIGER 这里是不生效的
   nua_dialog_usage_reset_refresh(du);
-
+  //是否打开session_timer
   /* Add session timer headers */
   if (session_timer_is_supported(ss->ss_timer))
     session_timer_add_headers(ss->ss_timer, ss->ss_state == nua_callstate_init,
 				  msg, sip, nh);
 
   ss->ss_100rel = NH_PGET(nh, early_media);
-  ss->ss_precondition = sip_has_feature(sip->sip_require, "precondition");
+  ss->ss_precondition = sip_has_feature(sip->sip_require, "precondition");//TIGER precondition 不了解
   if (ss->ss_precondition)
     ss->ss_update_needed = ss->ss_100rel = 1;
-
-  if (nh->nh_soa) {
+  //TIGER SOA==>Sofia SDP Offer/Answer Engine 的缩写
+  if (nh->nh_soa) {//
     soa_init_offer_answer(nh->nh_soa);
 
     if (sip->sip_payload)
@@ -833,14 +833,14 @@ static int nua_invite_client_request(nua_client_request_t *cr,
   else {
     offer_sent = session_get_description(sip, NULL, NULL);
   }
-
+  //发送状态机
   retval = nua_base_client_trequest(cr, msg, sip,
 				    NTATAG_REL100(ss->ss_100rel),
 				    TAG_NEXT(tags));
   if (retval == 0) {
     if ((cr->cr_offer_sent = offer_sent))
       ss->ss_oa_sent = Offer;
-
+    //状态机变化
     if (!cr->cr_restarting) /* Restart logic calls nua_invite_client_report */
       signal_call_state_change(nh, ss, 0, "INVITE sent",
 			       nua_callstate_calling);
@@ -1059,12 +1059,12 @@ static int nua_invite_client_report(nua_client_request_t *cr,
   }
 
   response = msg_ref_create(response); /* Keep reference to contents of sip */
-
+  
   if (orq != cr->cr_orq && cr->cr_orq) {	/* Being restarted */
-    next_state = nua_callstate_calling;
+    next_state = nua_callstate_calling;//tiger 未知
   }
   else if (status == 100) {
-    next_state = nua_callstate_calling;
+    next_state = nua_callstate_calling;//tiger 发送100 之后
   }
   else if (status < 300 && cr->cr_graceful) {
     next_state = nua_callstate_terminating;
@@ -4449,7 +4449,7 @@ session_timer_add_headers(struct session_timer *t,
   enum nua_session_refresher refresher = nua_any_refresher;
 
   static sip_param_t const x_params_uac[] = {"refresher=uac", NULL};
-  static sip_param_t const x_params_uas[] = {"refresher=uas", NULL};
+  static sip_param_t const x_params_uas[] = {"refresher=uas", NULL};//TIGER refresher Session-Expires=120;refresher=uas
 
   if ( !NH_PGET(nh, timer_autorequire) && NH_PISSET(nh, timer_autorequire)) {
     autorequire = 0;
@@ -4494,9 +4494,9 @@ session_timer_add_headers(struct session_timer *t,
 
   sip_session_expires_init(x)->x_delta = expires;
   if (refresher == nua_remote_refresher)
-    x->x_params = uas ? x_params_uac : x_params_uas;
+    x->x_params = uas ? x_params_uac : x_params_uas;//TIGER refresher Session-Expires
   else if (refresher == nua_local_refresher)
-    x->x_params = uas ? x_params_uas : x_params_uac;
+    x->x_params = uas ? x_params_uas : x_params_uac;//TIGER refresher Session-Expires
 
   if (expires == 0 && t->remote.min_se == 0)
     /* Session timer is not used, do not add headers */

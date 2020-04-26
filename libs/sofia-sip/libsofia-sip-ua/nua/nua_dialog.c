@@ -513,7 +513,7 @@ void nua_base_usage_update_params(nua_dialog_usage_t const *du,
 {
   (void)du, (void)changed, (void)params, (void)defaults;
 }
-
+//TIGER session_timeout //TIGER enable_timer 主要的部分在这里
 /**@internal
  * Set refresh value suitably.
  *
@@ -529,7 +529,7 @@ void nua_dialog_usage_set_refresh(nua_dialog_usage_t *du, unsigned delta)
     nua_dialog_usage_reset_refresh(du);
   else if (delta > 90 && delta < 5 * 60)
     /* refresh 30..60 seconds before deadline */
-    nua_dialog_usage_set_refresh_range(du, delta - 60, delta - 30);
+    nua_dialog_usage_set_refresh_range(du, delta - 60, delta - 30);//tiger 默认120，所以60-90
   else {
     /* By default, refresh around half time before deadline */
     unsigned min = (delta + 2) / 4;
@@ -539,7 +539,7 @@ void nua_dialog_usage_set_refresh(nua_dialog_usage_t *du, unsigned delta)
     nua_dialog_usage_set_refresh_range(du, min, max);
   }
 }
-
+//从min到max随机选一个值
 /**@internal Set refresh in range min..max seconds in the future. */
 void nua_dialog_usage_set_refresh_range(nua_dialog_usage_t *du,
 					unsigned min, unsigned max)
@@ -551,7 +551,7 @@ void nua_dialog_usage_set_refresh_range(nua_dialog_usage_t *du,
     max = min;
 
   if (min != max)
-    delta = su_randint(min, max);
+    delta = su_randint(min, max);//选一个随机值
   else
     delta = min;
 
