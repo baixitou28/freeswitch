@@ -273,7 +273,7 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 			switch_dir_make_recursive(path, SWITCH_DEFAULT_DIR_PERMS, conference->pool);
 		}
 	}
-
+	//打开录音文件
 	if (switch_core_file_open(&member->rec->fh, rec->path, (uint8_t) conference->channels, conference->rate, flags, rec->pool) != SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Error Opening File [%s]\n", rec->path);
 
@@ -307,12 +307,12 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Timer Setup Failed.  Conference Cannot Start\n");
 		goto end;
 	}
-
+	//wav文件sub chunk2 中title信息
 	if ((vval = switch_mprintf("Conference %s", conference->name))) {
 		switch_core_file_set_string(&member->rec->fh, SWITCH_AUDIO_COL_STR_TITLE, vval);
 		switch_safe_free(vval);
 	}
-
+	//wav文件sub chunk2 中artist信息
 	switch_core_file_set_string(&member->rec->fh, SWITCH_AUDIO_COL_STR_ARTIST, 
 			!zstr(conference->recording_metadata)?conference->recording_metadata:"FreeSWITCH mod_conference Software Conference Module");
 

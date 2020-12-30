@@ -2262,7 +2262,7 @@ switch_status_t conference_api_sub_list(conference_obj_t *conference, switch_str
 
 	return ret_status;
 }
-
+//会议主持人
 switch_status_t conference_api_sub_floor(conference_member_t *member, switch_stream_handle_t *stream, void *data)
 {
 
@@ -2277,18 +2277,18 @@ switch_status_t conference_api_sub_floor(conference_member_t *member, switch_str
 		return SWITCH_STATUS_SUCCESS;
 	}
 	
-	if (member->conference->floor_holder == member->id) {
+	if (member->conference->floor_holder == member->id) {//如果相同则设置为空
 		conference_member_set_floor_holder(member->conference, NULL, 0);
 		if (stream != NULL) {
 			stream->write_function(stream, "+OK floor none\n");
 		}
 	} else if (member->conference->floor_holder == 0) {
-		conference_member_set_floor_holder(member->conference, member, 0);
+		conference_member_set_floor_holder(member->conference, member, 0);//如果没有设置为当前
 		if (stream != NULL) {
 			stream->write_function(stream, "+OK floor %u\n", member->id);
 		}
 	} else {
-		if (stream != NULL) {
+		if (stream != NULL) {//提示已经被占用
 			stream->write_function(stream, "-ERR floor is held by %u\n", member->conference->floor_holder);
 		}
 	}
