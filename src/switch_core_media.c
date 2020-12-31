@@ -6965,7 +6965,7 @@ SWITCH_DECLARE(void) switch_core_autobind_cpu(void)
 		switch_core_thread_set_cpu_affinity(next_cpu());
 	}
 }
-
+//TIGER RECORD
 static switch_status_t perform_write(switch_core_session_t *session, switch_frame_t *frame, switch_io_flag_t flags, int stream_id)
 {
 	switch_io_event_hook_write_frame_t *ptr;
@@ -7047,7 +7047,7 @@ static switch_status_t perform_write(switch_core_session_t *session, switch_fram
 }
 
 
-static void *SWITCH_THREAD_FUNC audio_write_thread(switch_thread_t *thread, void *obj)
+static void *SWITCH_THREAD_FUNC audio_write_thread(switch_thread_t *thread, void *obj)//tiger record
 {
 	struct media_helper *mh = obj;
 	switch_core_session_t *session = mh->session;
@@ -15378,7 +15378,7 @@ SWITCH_DECLARE(switch_msrp_session_t *) switch_core_media_get_msrp_session(switc
 	return session->media_handle->msrp_session;
 }
 
-//TIGER1 重要switch_core_session_write_frame
+//TIGER1 重要switch_core_session_write_frame  //tiger record
 SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_session_t *session, switch_frame_t *frame, switch_io_flag_t flags,
 																int stream_id)
 {
@@ -15468,7 +15468,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 			}
 
 			if (session->write_impl.microseconds_per_packet < frame->codec->implementation->microseconds_per_packet) {
-				switch_core_session_start_audio_write_thread(session);
+				switch_core_session_start_audio_write_thread(session);//如果编码码码率比写的码率要比如L16高，则需要独立的线程来处理
 			}
 		}
 		need_codec = TRUE;
@@ -15545,7 +15545,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 		if (do_resample && status == SWITCH_STATUS_SUCCESS) {
 			status = SWITCH_STATUS_RESAMPLE;
 		}
-
+		//TIGER 合成
 		/* mux or demux to match */
 		if (session->write_impl.number_of_channels != frame->codec->implementation->number_of_channels) {
 			uint32_t rlen = session->raw_write_frame.datalen / 2 / frame->codec->implementation->number_of_channels;

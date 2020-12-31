@@ -2906,7 +2906,7 @@ conference_obj_t *conference_new(char *name, conference_xml_cfg_t cfg, switch_co
 			} else if (!strcasecmp(var, "exit-sound") && !zstr(val)) {
 				exit_sound = val;
 			} else if (!strcasecmp(var, "alone-sound") && !zstr(val)) {
-				alone_sound = val;
+				alone_sound = val;//TIGER ∂¡»°≈‰÷√
 			} else if (!strcasecmp(var, "perpetual-sound") && !zstr(val)) {
 				perpetual_sound = val;
 			} else if (!strcasecmp(var, "moh-sound") && !zstr(val)) {

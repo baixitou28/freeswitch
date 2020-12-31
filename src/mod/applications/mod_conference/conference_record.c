@@ -151,7 +151,7 @@ switch_status_t conference_record_action(conference_obj_t *conference, char *pat
 
 
 /* Sub-Routine called by a record entity inside a conference */
-void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, void *obj)
+void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, void *obj)//TIGER 录音入口
 {
 	int16_t *data_buf;
 	conference_member_t smember = { 0 }, *member;
@@ -300,7 +300,7 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 		}
 	}
 	switch_mutex_unlock(conference->mutex);
-
+	//tiger 日志显示interval:20， samples：160 from Codec PCMA
 	if (switch_core_timer_init(&timer, conference->timer_name, conference->interval, samples, rec->pool) == SWITCH_STATUS_SUCCESS) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Setup timer success interval: %u  samples: %u\n", conference->interval, samples);
 	} else {
@@ -390,11 +390,11 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 
 	for(;;) {
 		switch_mutex_lock(member->audio_out_mutex);
-		rlen = (uint32_t) switch_buffer_read(member->mux_buffer, data_buf, data_buf_len);//读数据
+		rlen = (uint32_t) switch_buffer_read(member->mux_buffer, data_buf, data_buf_len);//读数据，录音慢3.5秒，这里感觉没有延时，可能还要看混之前，有没有延时之类的
 		switch_mutex_unlock(member->audio_out_mutex);
 
 		if (rlen > 0) {//如果用户禁止发言或者静止麦克风，如何处理？能读到数据吗？
-			len = (switch_size_t) rlen / sizeof(int16_t)/ conference->channels;
+			len = (switch_size_t) rlen / sizeof(int16_t)/ conference->channels;//这里存的是L16，是16位，//但为什么还要除以通道数呢？
 			switch_core_file_write(&member->rec->fh, data_buf, &len);//写数据，这里是写混合的数据，还是单个的数据
 		} else {
 			break;//从member里的mux_buffer 始终应该读出数据来，否则就退出

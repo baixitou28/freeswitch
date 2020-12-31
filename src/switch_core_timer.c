@@ -36,7 +36,7 @@
 #include "private/switch_core_pvt.h"
 
 SWITCH_DECLARE(switch_status_t) switch_core_timer_init(switch_timer_t *timer, const char *timer_name, int interval, int samples,
-													   switch_memory_pool_t *pool)
+													   switch_memory_pool_t *pool)//tiger timer¶¨Ê±Æ÷
 {
 	switch_timer_interface_t *timer_interface;
 	switch_status_t status;

@@ -826,7 +826,7 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 	switch_core_session_get_read_impl(session, &member->read_impl);//编解码
 
 	switch_channel_audio_sync(channel);//如果。。。播放录音
-	//计算成员和会议中间的换算比
+	//计算成员和会议中间的换算比， 2 * 500 相当于是1秒
 	flush_len = switch_samples_per_packet(member->conference->rate, member->conference->interval) * 2 * member->conference->channels * (500 / member->conference->interval);
 
 	/* As long as we have a valid read, feed that data into an input buffer where the conference thread will take it
@@ -1231,7 +1231,7 @@ void *SWITCH_THREAD_FUNC conference_loop_input(switch_thread_t *thread, void *ob
 
 				/* Write the audio into the input buffer */
 				switch_mutex_lock(member->audio_in_mutex);
-				if (switch_buffer_inuse(member->audio_buffer) > flush_len) {
+				if (switch_buffer_inuse(member->audio_buffer) > flush_len) {//tiger timer
 					switch_buffer_toss(member->audio_buffer, tmp_frame.datalen);
 				}
 				ok = switch_buffer_write(member->audio_buffer, tmp_frame.data, tmp_frame.datalen);
@@ -1316,7 +1316,7 @@ void conference_loop_output(conference_member_t *member)
 	//csamples = samples;
 	tsamples = real_read_impl.samples_per_packet;//每个packet多少次采样
 	low_count = 0;
-	bytes = samples * 2 * member->conference->channels;//字节数
+	bytes = samples * 2 * member->conference->channels;//一次interval 如20ms的字节数的2倍
 	call_list = NULL;
 	cp = NULL;
 
@@ -1330,13 +1330,13 @@ void conference_loop_output(conference_member_t *member)
 		switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member->session), SWITCH_LOG_ERROR, "Timer Setup Failed.  Conference Cannot Start\n");
 		return;
 	}
-
+	//打印定时器信息 日志："Setup timer soft success interval: 20  samples: 160 from codec PCMA
 	switch_log_printf(SWITCH_CHANNEL_SESSION_LOG(member->session), SWITCH_LOG_DEBUG, "Setup timer %s success interval: %u  samples: %u from codec %s\n",
 					  member->conference->timer_name, interval, tsamples, real_read_impl.iananame);
 
 	//默认BUFFER 8192
 	write_frame.data = data = switch_core_session_alloc(member->session, SWITCH_RECOMMENDED_BUFFER_SIZE);
-	write_frame.buflen = SWITCH_RECOMMENDED_BUFFER_SIZE;
+	write_frame.buflen = SWITCH_RECOMMENDED_BUFFER_SIZE;//8k
 
 	//编码
 	write_frame.codec = &member->write_codec;
@@ -1501,37 +1501,37 @@ void conference_loop_output(conference_member_t *member)
 		}
 
 		use_buffer = NULL;
-		mux_used = (uint32_t) switch_buffer_inuse(member->mux_buffer);
+		mux_used = (uint32_t) switch_buffer_inuse(member->mux_buffer);//看看占用了多少
 
 		use_timer = 1;
 		//
 		if (mux_used) {
-			if (mux_used < bytes) {
+			if (mux_used < bytes) {//如果20ms 字节数的2倍还少
 				if (++low_count >= 5) {
 					/* partial frame sitting around this long is useless and builds delay */
 					conference_utils_member_set_flag_locked(member, MFLAG_FLUSH_BUFFER);
 				}
-			} else if (mux_used > flush_len) {
+			} else if (mux_used > flush_len) {//tiger timer 如果mux_used超过门限
 				/* getting behind, clear the buffer */
-				conference_utils_member_set_flag_locked(member, MFLAG_FLUSH_BUFFER);
+				conference_utils_member_set_flag_locked(member, MFLAG_FLUSH_BUFFER);//标记强行刷
 			}
 		}
 
 		if (switch_channel_test_app_flag(channel, CF_APP_TAGGED)) {
 			conference_utils_member_set_flag_locked(member, MFLAG_FLUSH_BUFFER);
-		} else if (mux_used >= bytes) {
+		} else if (mux_used >= bytes) {//如果混合的空间还有空余，那就开始写
 			/* Flush the output buffer and write all the data (presumably muxed) back to the channel */
-			switch_mutex_lock(member->audio_out_mutex);
-			write_frame.data = data;
+			switch_mutex_lock(member->audio_out_mutex);//tiger timer //TIGER audio_out_mutex 开始写
+			write_frame.data = data;//8k空间 
 			use_buffer = member->mux_buffer;
 			low_count = 0;
 			//
-			if ((write_frame.datalen = (uint32_t) switch_buffer_read(use_buffer, write_frame.data, bytes))) {
-				if (write_frame.datalen) {
+			if ((write_frame.datalen = (uint32_t) switch_buffer_read(use_buffer, write_frame.data, bytes))) {//尝试读取ok
+				if (write_frame.datalen) {//如果读到数据 
 					write_frame.samples = write_frame.datalen / 2 / member->conference->channels;
 
 					if( !conference_utils_member_test_flag(member, MFLAG_CAN_HEAR)) {
-						memset(write_frame.data, 255, write_frame.datalen);
+						memset(write_frame.data, 255, write_frame.datalen);//为什么是0xff而不是0
 					} else if (member->volume_out_level) { /* Check for output volume adjustments */
 						switch_change_sln_volume(write_frame.data, write_frame.samples * member->conference->channels, member->volume_out_level);
 					}
@@ -1556,9 +1556,9 @@ void conference_loop_output(conference_member_t *member)
 		}
 
 		if (conference_utils_member_test_flag(member, MFLAG_FLUSH_BUFFER)) {
-			if (switch_buffer_inuse(member->mux_buffer)) {
+			if (switch_buffer_inuse(member->mux_buffer)) {//如果有数据
 				switch_mutex_lock(member->audio_out_mutex);
-				switch_buffer_zero(member->mux_buffer);
+				switch_buffer_zero(member->mux_buffer);//直接清零，丢弃
 				switch_mutex_unlock(member->audio_out_mutex);
 			}
 			conference_utils_member_clear_flag_locked(member, MFLAG_FLUSH_BUFFER);

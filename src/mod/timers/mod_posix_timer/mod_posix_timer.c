@@ -364,7 +364,7 @@ static switch_status_t mod_posix_timer_destroy(switch_timer_t *timer)
 /**
  * Load the module
  */
-SWITCH_MODULE_LOAD_FUNCTION(mod_posix_timer_load)
+SWITCH_MODULE_LOAD_FUNCTION(mod_posix_timer_load)//tiger timer 采用posix 定时器
 {
 	switch_timer_interface_t *timer_interface;
 
