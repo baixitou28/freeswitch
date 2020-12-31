@@ -297,13 +297,13 @@ SWITCH_DECLARE(switch_size_t) switch_buffer_write(switch_buffer_t *buffer, const
 	switch_assert(buffer->data != NULL);
 
 	if (!datalen) {
-		return buffer->used;
+		return buffer->used;//返回当前buffer的水位
 	}
 
 	actual_freespace = buffer->datalen - buffer->actually_used;
 
 	if (actual_freespace < datalen) {
-		memmove(buffer->data, buffer->head, buffer->used);
+		memmove(buffer->data, buffer->head, buffer->used);//buff位置向前挪
 		buffer->head = buffer->data;
 		buffer->actually_used = buffer->used;
 	}

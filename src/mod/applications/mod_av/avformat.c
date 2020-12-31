@@ -1846,7 +1846,7 @@ static switch_status_t av_file_truncate(switch_file_handle_t *handle, int64_t of
 }
 
 
-static switch_status_t av_file_write(switch_file_handle_t *handle, void *data, size_t *len)
+static switch_status_t av_file_write(switch_file_handle_t *handle, void *data, size_t *len)//TIGER RECORD写音频文件，视频是av_file_write_video
 {
 
 	uint32_t datalen = 0;
@@ -1867,7 +1867,7 @@ static switch_status_t av_file_write(switch_file_handle_t *handle, void *data, s
 		if (switch_test_flag(handle, SWITCH_FILE_FLAG_VIDEO)) {
 			switch_buffer_zero(context->audio_buffer);
 			return status;
-		} else if (!context->aud_ready) { // audio only recording
+		} else if (!context->aud_ready) { // audio only recording//tiger record 这里有啥特殊含义
 			int ret = avformat_write_header(context->fc, NULL);
 			if (ret < 0) {
 				char ebuf[255] = "";
@@ -1879,16 +1879,16 @@ static switch_status_t av_file_write(switch_file_handle_t *handle, void *data, s
 	}
 
 	if (data && len) {
-		datalen = *len * 2 * handle->channels;
+		datalen = *len * 2 * handle->channels;//实际长度， 16bit，就是乘以2
 
 		if (context->offset) {
 			char buf[SWITCH_RECOMMENDED_BUFFER_SIZE] = {0};
 			switch_size_t samples = *len;
 			int fps = handle->samplerate / samples;
-			int lead_frames = (context->offset * fps) / 1000;
+			int lead_frames = (context->offset * fps) / 1000;//按毫秒计
 
 			for (int x = 0; x < lead_frames; x++) {
-				switch_buffer_write(context->audio_buffer, buf, datalen);
+				switch_buffer_write(context->audio_buffer, buf, datalen);//写入存在数据的buff
 			}
 			context->offset = 0;
 		}
@@ -1962,7 +1962,7 @@ GCC_DIAG_ON(deprecated-declarations)
 			}
 
 			audio_stream_count = 2;
-			len = switch_buffer_read(context->audio_buffer, (uint8_t *)context->mux_buf, bytes);
+			len = switch_buffer_read(context->audio_buffer, (uint8_t *)context->mux_buf, bytes);//tiger record 从混音中读
 
 			if (context->audio_st[0].r) {
 				l = 1;

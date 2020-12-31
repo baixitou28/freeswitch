@@ -6965,8 +6965,8 @@ SWITCH_DECLARE(void) switch_core_autobind_cpu(void)
 		switch_core_thread_set_cpu_affinity(next_cpu());
 	}
 }
-//TIGER RECORD
-static switch_status_t perform_write(switch_core_session_t *session, switch_frame_t *frame, switch_io_flag_t flags, int stream_id)
+
+static switch_status_t perform_write(switch_core_session_t *session, switch_frame_t *frame, switch_io_flag_t flags, int stream_id)//TIGER RECORD
 {
 	switch_io_event_hook_write_frame_t *ptr;
 	switch_status_t status = SWITCH_STATUS_FALSE;
@@ -6975,7 +6975,7 @@ static switch_status_t perform_write(switch_core_session_t *session, switch_fram
 	switch_assert(session != NULL);
 
 	if ((smh = session->media_handle)) {
-		switch_rtp_engine_t *a_engine = &smh->engines[SWITCH_MEDIA_TYPE_AUDIO];
+		switch_rtp_engine_t *a_engine = &smh->engines[SWITCH_MEDIA_TYPE_AUDIO];//找到语音
 
 		if (a_engine && a_engine->write_fb && !(flags & SWITCH_IO_FLAG_QUEUED)) {
 			switch_frame_t *dupframe = NULL;
@@ -7034,8 +7034,8 @@ static switch_status_t perform_write(switch_core_session_t *session, switch_fram
 
 
 	if (session->endpoint_interface->io_routines->write_frame) {
-		if ((status = session->endpoint_interface->io_routines->write_frame(session, frame, flags, stream_id)) == SWITCH_STATUS_SUCCESS) {
-			for (ptr = session->event_hooks.write_frame; ptr; ptr = ptr->next) {
+		if ((status = session->endpoint_interface->io_routines->write_frame(session, frame, flags, stream_id)) == SWITCH_STATUS_SUCCESS) {//io需要写包
+			for (ptr = session->event_hooks.write_frame; ptr; ptr = ptr->next) {//每个事件需要写包
 				if ((status = ptr->write_frame(session, frame, flags, stream_id)) != SWITCH_STATUS_SUCCESS) {
 					break;
 				}
@@ -7076,7 +7076,7 @@ static void *SWITCH_THREAD_FUNC audio_write_thread(switch_thread_t *thread, void
 
 	mh->up = 1;
 
-	switch_frame_buffer_create(&a_engine->write_fb, 500);
+	switch_frame_buffer_create(&a_engine->write_fb, 500);//设置500个的队列
 
 	while(switch_channel_up_nosig(session->channel) && mh->up == 1) {
 		void *pop;
@@ -7088,21 +7088,21 @@ static void *SWITCH_THREAD_FUNC audio_write_thread(switch_thread_t *thread, void
 			write_impl = session->write_impl;
 			switch_core_timer_destroy(&timer);
 			switch_core_timer_init(&timer, "soft", write_impl.microseconds_per_packet / 1000,
-								   write_impl.samples_per_packet, switch_core_session_get_pool(session));
+								   write_impl.samples_per_packet, switch_core_session_get_pool(session));//tiger record 启动这个时钟，时钟到了，执行什么函数
 
 		}
 
-		switch_core_timer_next(&timer);
+		switch_core_timer_next(&timer);//等待 一个packet时间
 
 		if (switch_frame_buffer_trypop(a_engine->write_fb, &pop) == SWITCH_STATUS_SUCCESS && pop) {
-			switch_frame_t *frame = (switch_frame_t *)pop;
+			switch_frame_t *frame = (switch_frame_t *)pop;//取队列中的第一个包
 
 			if ((switch_size_t)pop == 1) {
 				break;
 			}
 
-			perform_write(session, frame, SWITCH_IO_FLAG_QUEUED, 0);
-			switch_frame_buffer_free(a_engine->write_fb, &frame);
+			perform_write(session, frame, SWITCH_IO_FLAG_QUEUED, 0);//按队列顺序写
+			switch_frame_buffer_free(a_engine->write_fb, &frame);//释放
 		}
 	}
 
@@ -15985,7 +15985,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_write_frame(switch_core_sess
 
 				}
 
-				if (flag & SFF_CNG) {
+				if (flag & SFF_CNG) {//静音
 					switch_set_flag(write_frame, SFF_CNG);
 				}
 

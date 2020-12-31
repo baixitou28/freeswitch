@@ -64,7 +64,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_timer_init(switch_timer_t *timer, co
 	return timer->timer_interface->timer_init(timer);
 }
 
-SWITCH_DECLARE(switch_status_t) switch_core_timer_next(switch_timer_t *timer)
+SWITCH_DECLARE(switch_status_t) switch_core_timer_next(switch_timer_t *timer)//TIGER 等待一个时间周期
 {
 	if (!timer->timer_interface || !timer->timer_interface->timer_next) {
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Timer is not properly configured.\n");

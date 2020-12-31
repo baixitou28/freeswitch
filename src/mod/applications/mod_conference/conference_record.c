@@ -151,7 +151,7 @@ switch_status_t conference_record_action(conference_obj_t *conference, char *pat
 
 
 /* Sub-Routine called by a record entity inside a conference */
-void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, void *obj)//TIGER 录音入口
+void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, void *obj)//TIGER record录音入口 //date;ls -ltr --full-time ;date;差值64k，刷新太慢？
 {
 	int16_t *data_buf;
 	conference_member_t smember = { 0 }, *member;
