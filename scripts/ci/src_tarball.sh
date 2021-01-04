@@ -58,7 +58,7 @@ ls -al
 
 cat 1>&2 <<EOF
 ----------------------------------------------------------------------
-The freeswitch-${cver} tarballs have been rolled,
+The freeswitch-${cver} tarballs have been rolled, //TIGER  build shell
 now we just need to roll packages with them
 ----------------------------------------------------------------------
 EOF
