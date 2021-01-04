@@ -658,7 +658,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 		return status;
 	} else {
 		switch_status_t status;
-		if ((status = fh->file_interface->file_write(fh, data, len)) == SWITCH_STATUS_SUCCESS) {//sndfile_file_write 不是：这两个函数//native_file_file_write 或者//av_file_write
+		if ((status = fh->file_interface->file_write(fh, data, len)) == SWITCH_STATUS_SUCCESS) {//采用libsndfile 库来实现文件读写 sndfile_file_write 不是：这两个函数//native_file_file_write 或者//av_file_write
 			fh->samples_out += orig_len;
 		}
 		return status;

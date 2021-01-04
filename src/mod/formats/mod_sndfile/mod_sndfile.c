@@ -56,7 +56,7 @@ typedef struct sndfile_context sndfile_context;
 
 static switch_status_t sndfile_perform_open(sndfile_context *context, const char *path, int mode, switch_file_handle_t *handle);
 
-static switch_status_t sndfile_file_open(switch_file_handle_t *handle, const char *path)
+static switch_status_t sndfile_file_open(switch_file_handle_t *handle, const char *path)//libsndfile 封装
 {
 	sndfile_context *context;
 	int mode = 0;
@@ -109,7 +109,7 @@ static switch_status_t sndfile_file_open(switch_file_handle_t *handle, const cha
 		if (handle->samplerate == 8000 || handle->samplerate == 16000 ||
 			handle->samplerate == 24000 || handle->samplerate == 32000 || handle->samplerate == 48000 ||
 			handle->samplerate == 11025 || handle->samplerate == 22050 || handle->samplerate == 44100) {
-			context->sfinfo.format |= SF_FORMAT_PCM_16;
+			context->sfinfo.format |= SF_FORMAT_PCM_16;//选择16位
 		}
 	}
 
@@ -117,7 +117,7 @@ static switch_status_t sndfile_file_open(switch_file_handle_t *handle, const cha
 		context->sfinfo.format |= map->format;
 	}
 
-	if (!strcmp(ext, "r8") || !strcmp(ext, "raw")) {
+	if (!strcmp(ext, "r8") || !strcmp(ext, "raw")) {//不同的格式，不同的采样率
 		context->sfinfo.format = SF_FORMAT_RAW | SF_FORMAT_PCM_16;
 		context->sfinfo.channels = 1;
 		context->sfinfo.samplerate = 8000;
@@ -183,7 +183,7 @@ static switch_status_t sndfile_file_open(switch_file_handle_t *handle, const cha
 		ldup = strdup(last);
 		switch_assert(ldup);
 		switch_snprintf(last, alt_len - (last - alt_path), "%d%s%s", handle->samplerate, SWITCH_PATH_SEPARATOR, ldup);
-		if (sndfile_perform_open(context, alt_path, mode, handle) == SWITCH_STATUS_SUCCESS) {
+		if (sndfile_perform_open(context, alt_path, mode, handle) == SWITCH_STATUS_SUCCESS) {//
 			path = alt_path;
 		} else {
 			/* Try to find the file at the highest rate possible if we can't find one that matches the exact rate.
@@ -200,7 +200,7 @@ static switch_status_t sndfile_file_open(switch_file_handle_t *handle, const cha
 	}
 
 	if (!context->handle) {
-		if (sndfile_perform_open(context, path, mode, handle) != SWITCH_STATUS_SUCCESS) {
+		if (sndfile_perform_open(context, path, mode, handle) != SWITCH_STATUS_SUCCESS) {//
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Error Opening File [%s] [%s]\n", path, sf_strerror(context->handle));//TIGER conf-alone 配置没有这里提示错误
 			status = SWITCH_STATUS_GENERR;
 			goto end;
@@ -221,7 +221,7 @@ static switch_status_t sndfile_file_open(switch_file_handle_t *handle, const cha
 		handle->offset_pos = 0;
 	}
 
-	if (switch_test_flag(handle, SWITCH_FILE_WRITE_APPEND)) {
+	if (switch_test_flag(handle, SWITCH_FILE_WRITE_APPEND)) {//如果是追加
 		handle->pos = sf_seek(context->handle, frames, SEEK_END);
 	} else if (switch_test_flag(handle, SWITCH_FILE_WRITE_OVER)) {
 		handle->pos = sf_seek(context->handle, frames, SEEK_SET);
@@ -296,7 +296,7 @@ static switch_status_t sndfile_file_seek(switch_file_handle_t *handle, unsigned 
 	return r;
 }
 
-static switch_status_t sndfile_file_read(switch_file_handle_t *handle, void *data, size_t *len)
+static switch_status_t sndfile_file_read(switch_file_handle_t *handle, void *data, size_t *len)//TIGER libsndfile is a C library for reading and writing files containing sampled audio data.
 {
 	size_t inlen = *len;
 	sndfile_context *context = handle->private_info;
