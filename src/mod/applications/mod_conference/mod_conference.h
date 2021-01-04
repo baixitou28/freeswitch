@@ -782,7 +782,7 @@ struct conference_member {
 	conference_obj_t *conference;
 	switch_memory_pool_t *pool;
 	switch_buffer_t *audio_buffer;
-	switch_buffer_t *mux_buffer;
+	switch_buffer_t *mux_buffer;//ªÏ∫œ“Ù∆µ
 	switch_buffer_t *resample_buffer;
 	member_flag_t flags[MFLAG_MAX];
 	int32_t score;

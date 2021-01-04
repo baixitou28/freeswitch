@@ -2616,7 +2616,7 @@ static char *supported_formats[SWITCH_MAX_CODECS] = { 0 };
 
 static const char modname[] = "mod_av";
 
-SWITCH_MODULE_LOAD_FUNCTION(mod_avformat_load)
+SWITCH_MODULE_LOAD_FUNCTION(mod_avformat_load)//tiger file //TIGER AVFORMAT
 {
 	switch_file_interface_t *file_interface;
 	int i = 0;
@@ -2638,7 +2638,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_avformat_load)
 	file_interface->file_close = av_file_close;
 	file_interface->file_truncate = av_file_truncate;
 	file_interface->file_read = av_file_read;
-	file_interface->file_write = av_file_write;
+	file_interface->file_write = av_file_write;//TIGER FILE
 	file_interface->file_read_video = av_file_read_video;
 	file_interface->file_write_video = av_file_write_video;
 	file_interface->file_seek = av_file_seek;

@@ -6133,7 +6133,7 @@ SWITCH_STANDARD_APP(deduplicate_dtmf_app_function)
 	}
 }
 
-SWITCH_STANDARD_APP(vad_test_function)
+SWITCH_STANDARD_APP(vad_test_function)//tiger vad 在这里嵌入vad，但我们没有在dialplan里面用vad_test
 {
 	switch_channel_t *channel = switch_core_session_get_channel(session);
 	switch_codec_implementation_t imp = { 0 };
@@ -6149,14 +6149,14 @@ SWITCH_STANDARD_APP(vad_test_function)
 
 		if (mode > 3) mode = 3;
 	}
-
+	//session 读取
 	switch_core_session_raw_read(session);
-	switch_core_session_get_read_impl(session, &imp);
-
+	switch_core_session_get_read_impl(session, &imp);//读取某个结构
+	//vad 初始化
 	vad = switch_vad_init(imp.samples_per_second, imp.number_of_channels);
 	switch_assert(vad);
 	switch_vad_set_mode(vad, mode);
-
+	//读取可能的配置参数
 	if ((var = switch_channel_get_variable(channel, "vad_hangover_len"))) {
 		tmp = atoi(var);
 
@@ -6175,7 +6175,7 @@ SWITCH_STANDARD_APP(vad_test_function)
 		if (tmp > 0) switch_vad_set_param(vad, "listen_hits", tmp);
 	}
 
-	if ((var = switch_channel_get_variable(channel, "vad_debug"))) {
+	if ((var = switch_channel_get_variable(channel, "vad_debug"))) {//TIGER DEBUG 可能可以尝试一下
 		tmp = atoi(var);
 
 		if (tmp < 0) tmp = 0;
@@ -6184,26 +6184,26 @@ SWITCH_STANDARD_APP(vad_test_function)
 		switch_vad_set_param(vad, "debug", tmp);
 	}
 
-	while (switch_channel_ready(channel)) {
-		switch_status_t status = switch_core_session_read_frame(session, &frame, SWITCH_IO_FLAG_NONE, 0);
+	while (switch_channel_ready(channel)) {//channel准备好了？
+		switch_status_t status = switch_core_session_read_frame(session, &frame, SWITCH_IO_FLAG_NONE, 0);//读取一帧
 
-		if (!SWITCH_READ_ACCEPTABLE(status)) {
+		if (!SWITCH_READ_ACCEPTABLE(status)) {//判断状态
 			break;
 		}
 
-		if (switch_test_flag(frame, SFF_CNG)) {
+		if (switch_test_flag(frame, SFF_CNG)) {//是否是comfort noise generate状态
 			continue;
 		}
 
-		vad_state = switch_vad_process(vad, frame->data, frame->datalen / 2);
+		vad_state = switch_vad_process(vad, frame->data, frame->datalen / 2);//处理vad，
 
-		if (vad_state == SWITCH_VAD_STATE_START_TALKING) {
+		if (vad_state == SWITCH_VAD_STATE_START_TALKING) {//只有在vad_state为说话状态，才肯能写到session里
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_INFO, "START TALKING\n");
-			switch_core_session_write_frame(session, frame, SWITCH_IO_FLAG_NONE, 0);
+			switch_core_session_write_frame(session, frame, SWITCH_IO_FLAG_NONE, 0);//写
 		} else if (vad_state == SWITCH_VAD_STATE_STOP_TALKING) {
-			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "STOP TALKING\n");
+			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "STOP TALKING\n");//不应该有数据
 		} else if (vad_state == SWITCH_VAD_STATE_TALKING) {
-			switch_core_session_write_frame(session, frame, SWITCH_IO_FLAG_NONE, 0);
+			switch_core_session_write_frame(session, frame, SWITCH_IO_FLAG_NONE, 0);//写
 		} else {
 			switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "vad_state: %s\n", switch_vad_state2str(vad_state));
 		}
@@ -6547,7 +6547,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_dptools_load)
 	SWITCH_ADD_APP(app_interface, "pickup", "Pickup", "Pickup a call", pickup_function, PICKUP_SYNTAX, SAF_SUPPORT_NOMEDIA);
 	SWITCH_ADD_APP(app_interface, "deduplicate_dtmf", "Prevent duplicate inband + 2833 dtmf", "", deduplicate_dtmf_app_function, "[only_rtp]", SAF_SUPPORT_NOMEDIA);
 
-	SWITCH_ADD_APP(app_interface, "vad_test", "VAD test", "VAD test, mode = -1(default), 0, 1, 2, 3", vad_test_function, "[mode]", SAF_NONE);
+	SWITCH_ADD_APP(app_interface, "vad_test", "VAD test", "VAD test, mode = -1(default), 0, 1, 2, 3", vad_test_function, "[mode]", SAF_NONE);//tiger vad 在mod_dptools_load加入
 
 	SWITCH_ADD_DIALPLAN(dp_interface, "inline", inline_dialplan_hunt);
 

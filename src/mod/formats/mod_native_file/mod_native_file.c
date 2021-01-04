@@ -175,7 +175,7 @@ static switch_status_t native_file_file_get_string(switch_file_handle_t *handle,
 
 static char *supported_formats[SWITCH_MAX_CODECS + 1] = { 0 };
 
-SWITCH_MODULE_LOAD_FUNCTION(mod_native_file_load)
+SWITCH_MODULE_LOAD_FUNCTION(mod_native_file_load)//tiger file 原生文件加载
 {
 	switch_file_interface_t *file_interface;
 
@@ -199,7 +199,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_native_file_load)
 	file_interface->file_close = native_file_file_close;
 	file_interface->file_truncate = native_file_file_truncate;
 	file_interface->file_read = native_file_file_read;
-	file_interface->file_write = native_file_file_write;
+	file_interface->file_write = native_file_file_write;//tiger file 调用apr_file_write
 	file_interface->file_seek = native_file_file_seek;
 	file_interface->file_set_string = native_file_file_set_string;
 	file_interface->file_get_string = native_file_file_get_string;

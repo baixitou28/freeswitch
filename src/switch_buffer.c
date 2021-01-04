@@ -238,7 +238,7 @@ SWITCH_DECLARE(switch_size_t) switch_buffer_read(switch_buffer_t *buffer, void *
 	if (buffer->used < 1) {
 		buffer->used = 0;
 		return 0;
-	} else if (buffer->used >= datalen) {
+	} else if (buffer->used >= datalen) {//最多只能读datalen
 		reading = datalen;
 	} else {
 		reading = buffer->used;

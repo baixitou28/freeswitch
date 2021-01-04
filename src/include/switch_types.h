@@ -634,9 +634,9 @@ typedef uint32_t switch_vad_flag_t;
 
 typedef enum {
 	SWITCH_VAD_STATE_NONE,
-	SWITCH_VAD_STATE_START_TALKING,
-	SWITCH_VAD_STATE_TALKING,
-	SWITCH_VAD_STATE_STOP_TALKING,
+	SWITCH_VAD_STATE_START_TALKING,//开始讲话，但未探测到客户端的数据
+	SWITCH_VAD_STATE_TALKING,//讲话中
+	SWITCH_VAD_STATE_STOP_TALKING,//结束讲话
 	SWITCH_VAD_STATE_ERROR
 } switch_vad_state_t;
 typedef struct switch_vad_s switch_vad_t;

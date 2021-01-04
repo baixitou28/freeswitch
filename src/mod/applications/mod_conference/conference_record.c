@@ -270,7 +270,7 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 				}
 			}
 
-			switch_dir_make_recursive(path, SWITCH_DEFAULT_DIR_PERMS, conference->pool);
+			switch_dir_make_recursive(path, SWITCH_DEFAULT_DIR_PERMS, conference->pool);//创建录音文件的目录
 		}
 	}
 	//打开录音文件
@@ -283,14 +283,14 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Action", "start-recording");
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Path", rec->path);
 			switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Error", "File could not be opened for recording");
-			switch_event_fire(&event);
+			switch_event_fire(&event);//发送录音失败事件
 		}
 
 		goto end;
 	}
 
 	switch_mutex_lock(conference->mutex);
-	if (conference->video_floor_holder) {
+	if (conference->video_floor_holder) {//如果已经有
 		conference_member_t *member;
 		if ((member = conference_member_get(conference, conference->video_floor_holder))) {
 			if (member->session) {
@@ -321,24 +321,24 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 		conference_event_add_data(conference, event);
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Action", "start-recording");
 		switch_event_add_header_string(event, SWITCH_STACK_BOTTOM, "Path", rec->path);
-		switch_event_fire(&event);
+		switch_event_fire(&event);//发送开始录音事件
 	}
 
-	if (conference_member_add(conference, member) != SWITCH_STATUS_SUCCESS) {
+	if (conference_member_add(conference, member) != SWITCH_STATUS_SUCCESS) {//加入会议成员
 		switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_ERROR, "Error Joining Conference\n");
 		goto end;
 	}
-
+	//进入循环
 	while (conference_utils_member_test_flag(member, MFLAG_RUNNING) && conference_utils_test_flag(conference, CFLAG_RUNNING) && (conference->count + conference->count_ghosts)) {
 
 		len = 0;
 
 		mux_used = (uint32_t) switch_buffer_inuse(member->mux_buffer);
 
-		if (conference_utils_member_test_flag(member, MFLAG_FLUSH_BUFFER)) {
+		if (conference_utils_member_test_flag(member, MFLAG_FLUSH_BUFFER)) {//如果超时，会主动丢弃一段时间，以通同步
 			if (mux_used) {
 				switch_mutex_lock(member->audio_out_mutex);
-				switch_buffer_zero(member->mux_buffer);
+				switch_buffer_zero(member->mux_buffer);//清零
 				switch_mutex_unlock(member->audio_out_mutex);
 				mux_used = 0;
 			}
@@ -357,7 +357,7 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 			switch_mutex_lock(member->audio_out_mutex);
 			//low_count = 0;
 
-			if ((rlen = (uint32_t) switch_buffer_read(member->mux_buffer, data_buf, data_buf_len))) {
+			if ((rlen = (uint32_t) switch_buffer_read(member->mux_buffer, data_buf, data_buf_len))) {//读mux_buffer的数据
 				len = (switch_size_t) rlen / sizeof(int16_t) / conference->channels;
 			}
 			switch_mutex_unlock(member->audio_out_mutex);
@@ -366,15 +366,15 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
 		if (len == 0) {
 			mux_used = (uint32_t) switch_buffer_inuse(member->mux_buffer);
 
-			if (mux_used >= data_buf_len) {
+			if (mux_used >= data_buf_len) {//如果？
 				goto again;
 			}
 
-			memset(data_buf, 255, (switch_size_t) data_buf_len);
+			memset(data_buf, 255, (switch_size_t) data_buf_len);//设置为 0XFF，为什么是0XFF
 			len = (switch_size_t) samples;
 		}
 
-		if (!conference_utils_member_test_flag(member, MFLAG_PAUSE_RECORDING)) {
+		if (!conference_utils_member_test_flag(member, MFLAG_PAUSE_RECORDING)) {//如果暂停？
 			if (!len || switch_core_file_write(&member->rec->fh, data_buf, &len) != SWITCH_STATUS_SUCCESS) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Write Failed\n");
 				conference_utils_member_clear_flag_locked(member, MFLAG_RUNNING);
@@ -389,13 +389,13 @@ void *SWITCH_THREAD_FUNC conference_record_thread_run(switch_thread_t *thread, v
  end:
 
 	for(;;) {
-		switch_mutex_lock(member->audio_out_mutex);
+		switch_mutex_lock(member->audio_out_mutex);//取已经混合好的mux_buffer数据到data_buf
 		rlen = (uint32_t) switch_buffer_read(member->mux_buffer, data_buf, data_buf_len);//读数据，录音慢3.5秒，这里感觉没有延时，可能还要看混之前，有没有延时之类的
 		switch_mutex_unlock(member->audio_out_mutex);
 
 		if (rlen > 0) {//如果用户禁止发言或者静止麦克风，如何处理？能读到数据吗？
 			len = (switch_size_t) rlen / sizeof(int16_t)/ conference->channels;//这里存的是L16，是16位，//但为什么还要除以通道数呢？
-			switch_core_file_write(&member->rec->fh, data_buf, &len);//写数据，这里是写混合的数据，还是单个的数据
+			switch_core_file_write(&member->rec->fh, data_buf, &len);//写数据，这里是写混合的数据，还是单个的数据 ==>已经混合好的
 		} else {
 			break;//从member里的mux_buffer 始终应该读出数据来，否则就退出
 		}

@@ -683,7 +683,7 @@ void *SWITCH_THREAD_FUNC conference_thread_run(switch_thread_t *thread, void *ob
 			if (conference->comfort_noise_level) {
 				switch_generate_sln_silence(write_frame, samples, conference->channels, conference->comfort_noise_level * (conference->rate / 8000));
 			} else {
-				memset(write_frame, 255, bytes);//没有声音，搞点空数据
+				memset(write_frame, 255, bytes);//没有声音，搞点空数据， 为什么是0XFF?
 			}
 
 			for (omember = conference->members; omember; omember = omember->next) {//每个用户都写静音数据

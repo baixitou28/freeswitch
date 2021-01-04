@@ -73,7 +73,7 @@ SWITCH_DECLARE(const char *) switch_vad_state2str(switch_vad_state_t state)
 	}
 }
 
-SWITCH_DECLARE(switch_vad_t *) switch_vad_init(int sample_rate, int channels)
+SWITCH_DECLARE(switch_vad_t *) switch_vad_init(int sample_rate, int channels)//tiger VAD(voice activity detection) 初始化
 {
 	switch_vad_t *vad = malloc(sizeof(switch_vad_t));
 
@@ -82,10 +82,10 @@ SWITCH_DECLARE(switch_vad_t *) switch_vad_init(int sample_rate, int channels)
 	memset(vad, 0, sizeof(*vad));
 	vad->sample_rate = sample_rate ? sample_rate : 8000;
 	vad->channels = channels;
-	vad->_hangover_len = 25;
+	vad->_hangover_len = 25;//默认值
 	vad->_thresh = 100;
 	vad->_listen_hits = 10;
-	switch_vad_reset(vad);
+	switch_vad_reset(vad);//其他的初始化
 
 	return vad;
 }
@@ -124,13 +124,13 @@ SWITCH_DECLARE(int) switch_vad_set_mode(switch_vad_t *vad, int mode)
 #endif
 }
 
-SWITCH_DECLARE(void) switch_vad_set_param(switch_vad_t *vad, const char *key, int val)
+SWITCH_DECLARE(void) switch_vad_set_param(switch_vad_t *vad, const char *key, int val)//参数设置
 {
 	if (!key) return;
 
 	if (!strcmp(key, "hangover_len")) {
 		vad->hangover_len = vad->_hangover_len = val;
-	} else if (!strcmp(key, "thresh")) {
+	} else if (!strcmp(key, "thresh")) {//设置的门限值
 		vad->thresh = vad->_thresh = val;
 	} else if (!strcmp(key, "debug")) {
 		vad->debug = val;
@@ -139,7 +139,7 @@ SWITCH_DECLARE(void) switch_vad_set_param(switch_vad_t *vad, const char *key, in
 	}
 }
 
-SWITCH_DECLARE(void) switch_vad_reset(switch_vad_t *vad)
+SWITCH_DECLARE(void) switch_vad_reset(switch_vad_t *vad)//重置
 {
 #ifdef SWITCH_HAVE_FVAD
 	if (vad->fvad) {
@@ -158,8 +158,8 @@ SWITCH_DECLARE(void) switch_vad_reset(switch_vad_t *vad)
 	vad->thresh = vad->_thresh;
 	vad->vad_state = SWITCH_VAD_STATE_NONE;
 }
-
-SWITCH_DECLARE(switch_vad_state_t) switch_vad_process(switch_vad_t *vad, int16_t *data, unsigned int samples)
+//vad_test_function中被调用
+SWITCH_DECLARE(switch_vad_state_t) switch_vad_process(switch_vad_t *vad, int16_t *data, unsigned int samples)//TIGER 主函数 VAD(voice activity detection)
 {
 	int energy = 0, j = 0, count = 0;
 	int score = 0;
@@ -169,7 +169,7 @@ SWITCH_DECLARE(switch_vad_state_t) switch_vad_process(switch_vad_t *vad, int16_t
 	}
 
 	if (vad->vad_state == SWITCH_VAD_STATE_START_TALKING) {
-		vad->vad_state = SWITCH_VAD_STATE_TALKING;
+		vad->vad_state = SWITCH_VAD_STATE_TALKING;//探测到数据包了
 	}
 	
 #ifdef SWITCH_HAVE_FVAD
@@ -183,11 +183,11 @@ SWITCH_DECLARE(switch_vad_state_t) switch_vad_process(switch_vad_t *vad, int16_t
 #endif
 
 	for (energy = 0, j = 0, count = 0; count < samples; count++) {
-		energy += abs(data[j]);
-		j += vad->channels;
+		energy += abs(data[j]);//信号强度绝对值总和
+		j += vad->channels;//通道数
 	}
 
-	score = (uint32_t) (energy / (samples / vad->divisor));
+	score = (uint32_t) (energy / (samples / vad->divisor));//平均的信号强度
 
 #ifdef SWITCH_HAVE_FVAD
 	}
@@ -196,7 +196,7 @@ SWITCH_DECLARE(switch_vad_state_t) switch_vad_process(switch_vad_t *vad, int16_t
 	//printf("%d ", score); fflush(stdout);
 	//printf("yay %d %d %d\n", score, vad->hangover, vad->talking);
 
-	if (vad->talking && score < vad->thresh) {
+	if (vad->talking && score < vad->thresh) {//如果比阈值小，而且已经talking了，就需要做一些额外操作，
 		if (vad->hangover > 0) {
 			vad->hangover--;
 		} else {// if (hangover <= 0) {
@@ -205,10 +205,10 @@ SWITCH_DECLARE(switch_vad_state_t) switch_vad_process(switch_vad_t *vad, int16_t
 			vad->hangover = 0;
 		}
 	} else {
-		if (score >= vad->thresh) {
+		if (score >= vad->thresh) {//如果比阈值大，
 			vad->vad_state = vad->talking ? SWITCH_VAD_STATE_TALKING : SWITCH_VAD_STATE_START_TALKING;
 			vad->talking = 1;
-			vad->hangover = vad->hangover_len;
+			vad->hangover = vad->hangover_len;//默认是25
 		}
 	}
 

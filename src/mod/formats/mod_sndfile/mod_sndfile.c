@@ -331,7 +331,7 @@ static switch_status_t sndfile_file_write(switch_file_handle_t *handle, void *da
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_INT)) {
 		*len = (size_t) sf_writef_int(context->handle, (int *) data, inlen);
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_SHORT)) {
-		*len = (size_t) sf_writef_short(context->handle, (short *) data, inlen);
+		*len = (size_t) sf_writef_short(context->handle, (short *) data, inlen);//tiger record Â¼ÖÆ
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_FLOAT)) {
 		*len = (size_t) sf_writef_float(context->handle, (float *) data, inlen);
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_DOUBLE)) {
@@ -497,7 +497,7 @@ SWITCH_MODULE_LOAD_FUNCTION(mod_sndfile_load)
 	file_interface->file_close = sndfile_file_close;
 	file_interface->file_truncate = sndfile_file_truncate;
 	file_interface->file_read = sndfile_file_read;
-	file_interface->file_write = sndfile_file_write;
+	file_interface->file_write = sndfile_file_write;//tiger file 
 	file_interface->file_seek = sndfile_file_seek;
 	file_interface->file_set_string = sndfile_file_set_string;
 	file_interface->file_get_string = sndfile_file_get_string;

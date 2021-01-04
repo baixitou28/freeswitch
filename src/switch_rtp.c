@@ -8071,7 +8071,7 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 		//switch_core_timer_sync(&rtp_session->write_timer);
 	}
 
-	if (send_msg) {
+	if (send_msg) {//Tiger 
 		bytes = datalen;
 
 		m = (uint8_t) send_msg->header.m;
@@ -8089,7 +8089,7 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 			datalen -= rtp_header_len;
 		}
 	} else {
-		if (*flags & SFF_RFC2833) {
+		if (*flags & SFF_RFC2833) {//TIGER
 			if (rtp_session->te == INVALID_PT) {
 				ret = 0;
 				goto end;
@@ -8100,7 +8100,7 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 		send_msg = &rtp_session->send_msg;
 		send_msg->header.pt = payload;
 
-		m = get_next_write_ts(rtp_session, timestamp);
+		m = get_next_write_ts(rtp_session, timestamp);//获取ts
 
 		rtp_session->send_msg.header.ts = htonl(rtp_session->ts);
 
@@ -8108,7 +8108,7 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 		bytes = datalen + rtp_header_len;
 	}
 
-	if (!switch_rtp_test_flag(rtp_session, SWITCH_RTP_FLAG_VIDEO)) {
+	if (!switch_rtp_test_flag(rtp_session, SWITCH_RTP_FLAG_VIDEO)) {//如果不是视频
 		
 		if ((rtp_session->rtp_bugs & RTP_BUG_NEVER_SEND_MARKER)) {
 			m = 0;
@@ -8162,7 +8162,7 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 		}
 	}
 
-	if (switch_rtp_test_flag(rtp_session, SWITCH_RTP_FLAG_VIDEO)) {
+	if (switch_rtp_test_flag(rtp_session, SWITCH_RTP_FLAG_VIDEO)) {//如果是视频
 		int external = (*flags & SFF_EXTERNAL);
 		/* Normalize the timestamps to our own base by generating a made up starting point then adding the measured deltas to that base
 		   so if the timestamps and ssrc of the source change, it will not break the other end's jitter bufffer / decoder etc *cough* CHROME *cough*
@@ -8231,12 +8231,12 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 		time_t now = switch_epoch_time_now(NULL);
 		send = 0;
 
-		if (rtp_session->vad_data.scan_freq && rtp_session->vad_data.next_scan <= now) {
-			rtp_session->vad_data.bg_count = rtp_session->vad_data.bg_level = 0;
-			rtp_session->vad_data.next_scan = now + rtp_session->vad_data.scan_freq;
+		if (rtp_session->vad_data.scan_freq && rtp_session->vad_data.next_scan <= now) {//如果检查的一个周期到了，清零，以便下次检查
+			rtp_session->vad_data.bg_count = rtp_session->vad_data.bg_level = 0;//清零
+			rtp_session->vad_data.next_scan = now + rtp_session->vad_data.scan_freq;//下次时间
 		}
 
-		if (switch_core_codec_decode(&rtp_session->vad_data.vad_codec,
+		if (switch_core_codec_decode(&rtp_session->vad_data.vad_codec,//
 									 rtp_session->vad_data.read_codec,
 									 data,
 									 datalen,
@@ -8249,8 +8249,8 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 			int divisor = 0;
 			if (z) {
 
-				if (!(divisor = rtp_session->vad_data.read_codec->implementation->actual_samples_per_second / 8000)) {
-					divisor = 1;
+				if (!(divisor = rtp_session->vad_data.read_codec->implementation->actual_samples_per_second / 8000)) {//divisor：每秒字节数
+					divisor = 1;//避免为0
 				}
 
 				for (x = 0; x < z; x++) {
@@ -8258,7 +8258,7 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 					y += rtp_session->vad_data.read_codec->implementation->number_of_channels;
 				}
 
-				if (++rtp_session->vad_data.start_count < rtp_session->vad_data.start) {
+				if (++rtp_session->vad_data.start_count < rtp_session->vad_data.start) {//如果
 					send = 1;
 				} else {
 					score = (energy / (z / divisor));
@@ -8288,7 +8288,7 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 								rtp_session->vad_data.hangover_hits = rtp_session->vad_data.hangunder_hits = rtp_session->vad_data.cng_count = 0;
 								if (switch_test_flag(&rtp_session->vad_data, SWITCH_VAD_FLAG_EVENTS_TALK)) {
 
-									if ((rtp_session->vad_data.fire_events & VAD_FIRE_TALK)) {
+									if ((rtp_session->vad_data.fire_events & VAD_FIRE_TALK)) {//发送开始说话事件
 										switch_event_t *event;
 										if (switch_event_create(&event, SWITCH_EVENT_TALK) == SWITCH_STATUS_SUCCESS) {
 											switch_channel_event_set_data(switch_core_session_get_channel(rtp_session->vad_data.session), event);
@@ -8301,17 +8301,17 @@ static int rtp_common_write(switch_rtp_t *rtp_session,
 							if (rtp_session->vad_data.hangunder_hits) {
 								rtp_session->vad_data.hangunder_hits--;
 							}
-							if (switch_test_flag(&rtp_session->vad_data, SWITCH_VAD_FLAG_TALKING)) {
-								if (++rtp_session->vad_data.hangover_hits >= rtp_session->vad_data.hangover) {
+							if (switch_test_flag(&rtp_session->vad_data, SWITCH_VAD_FLAG_TALKING)) {//如果用户原来在说话，要判断什么时候已经不说话了
+								if (++rtp_session->vad_data.hangover_hits >= rtp_session->vad_data.hangover) {//在conference_loop.c中统计
 									rtp_session->vad_data.stop_talking = switch_micro_time_now();
-									rtp_session->vad_data.total_talk_time += (rtp_session->vad_data.stop_talking - rtp_session->vad_data.start_talking);
+									rtp_session->vad_data.total_talk_time += (rtp_session->vad_data.stop_talking - rtp_session->vad_data.start_talking);//总共对话时长
 
-									switch_clear_flag(&rtp_session->vad_data, SWITCH_VAD_FLAG_TALKING);
+									switch_clear_flag(&rtp_session->vad_data, SWITCH_VAD_FLAG_TALKING);//清除
 
 									rtp_session->vad_data.hangover_hits = rtp_session->vad_data.hangunder_hits = rtp_session->vad_data.cng_count = 0;
 									if (switch_test_flag(&rtp_session->vad_data, SWITCH_VAD_FLAG_EVENTS_NOTALK)) {
 
-										if ((rtp_session->vad_data.fire_events & VAD_FIRE_NOT_TALK)) {
+										if ((rtp_session->vad_data.fire_events & VAD_FIRE_NOT_TALK)) {//是否用户已经不说话了
 											switch_event_t *event;
 											if (switch_event_create(&event, SWITCH_EVENT_NOTALK) == SWITCH_STATUS_SUCCESS) {
 												switch_channel_event_set_data(switch_core_session_get_channel(rtp_session->vad_data.session), event);

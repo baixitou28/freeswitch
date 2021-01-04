@@ -63,7 +63,7 @@ SWITCH_DECLARE(void) switch_core_gen_encoded_silence(unsigned char *data, const 
 	}
 
 }
-//TIGER040 重要 读一帧switch_core_session_read_frame
+//TIGER040 重要 读一帧switch_core_session_read_frame //TIGER READ
 //一般每20毫秒读一帧，如果读不到数据，也没有错误就产生一个静音包Comforat Noise Generation:CNG
 SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_session_t *session, switch_frame_t **frame, switch_io_flag_t flags,
 															   int stream_id)
@@ -79,13 +79,13 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 
 	tap_only = switch_test_flag(session, SSF_MEDIA_BUG_TAP_ONLY);
 
-	switch_os_yield();
+	switch_os_yield();//不是很紧急
 
 	if (switch_mutex_trylock(session->codec_read_mutex) == SWITCH_STATUS_SUCCESS) {
 		switch_mutex_unlock(session->codec_read_mutex);
-	} else {
-		switch_cond_next();
-		*frame = &runtime.dummy_cng_frame;//tiger1 静音包
+	} else {//如果不能获取读锁
+		switch_cond_next();//放弃线程
+		*frame = &runtime.dummy_cng_frame;//tiger1 静音包 ==>放弃线程为什么要静音包？
 		return SWITCH_STATUS_SUCCESS;
 	}
 
@@ -124,7 +124,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 
   top:
 
-	for(i = 0; i < 2; i++) {//
+	for(i = 0; i < 2; i++) {//未知
 		if (session->dmachine[i]) {
 			switch_channel_dtmf_lock(session->channel);
 			switch_ivr_dmachine_ping(session->dmachine[i], NULL);
@@ -132,7 +132,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 		}
 	}
 
-	if (switch_channel_down(session->channel) || !switch_core_codec_ready(session->read_codec)) {
+	if (switch_channel_down(session->channel) || !switch_core_codec_ready(session->read_codec)) {//是否channel已关闭
 		*frame = NULL;//
 		status = SWITCH_STATUS_FALSE;
 		goto even_more_done;
@@ -164,7 +164,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_session_read_frame(switch_core_sessi
 	}
 
 
-	if (switch_channel_test_flag(session->channel, CF_HOLD)) {
+	if (switch_channel_test_flag(session->channel, CF_HOLD)) {//如果用户是hold住，那也没有包
 		switch_yield(session->read_impl.microseconds_per_packet);
 		status = SWITCH_STATUS_BREAK;
 		goto even_more_done;
