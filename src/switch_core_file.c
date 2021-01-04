@@ -642,8 +642,8 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 		switch_buffer_write(fh->pre_buffer, data, (asis ? *len : *len * 2) * fh->channels);
 
 		rlen = switch_buffer_inuse(fh->pre_buffer);
-
-		if (rlen >= fh->pre_buffer_datalen) {//pre_buffer_datalen 初始定义为64k
+#define AUDIO_500MS_LEN 0x1000
+		if (rlen >= AUDIO_500MS_LEN) { // fh->pre_buffer_datalen 原先是pre_buffer_datalen 初始定义为64k
 			if ((blen = switch_buffer_read(fh->pre_buffer, fh->pre_buffer_data, fh->pre_buffer_datalen))) {//blen为读取的长度
 				if (!asis)
 					blen /= 2;//
