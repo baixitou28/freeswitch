@@ -389,14 +389,14 @@ SWITCH_DECLARE(switch_status_t) switch_core_perform_file_open(const char *file, 
 		}
 	}
 
-	if (switch_test_flag(fh, SWITCH_FILE_FLAG_VIDEO)) {
+	if (switch_test_flag(fh, SWITCH_FILE_FLAG_VIDEO)) {//如果是视频不需要pre_buffer_datalen？
 		fh->pre_buffer_datalen = 0;
 	}
 
-	if (fh->pre_buffer_datalen) {
+	if (fh->pre_buffer_datalen) {//预分配buffer大小
 		//switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_DEBUG, "Prebuffering %d bytes\n", (int)fh->pre_buffer_datalen);
 		switch_buffer_create_dynamic(&fh->pre_buffer, fh->pre_buffer_datalen * fh->channels, fh->pre_buffer_datalen * fh->channels, 0);
-		fh->pre_buffer_data = switch_core_alloc(fh->memory_pool, fh->pre_buffer_datalen * fh->channels);
+		fh->pre_buffer_data = switch_core_alloc(fh->memory_pool, fh->pre_buffer_datalen * fh->channels);//TIGER RECORD 这里分配是通道数的倍数
 	}
 
 
@@ -460,16 +460,16 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_read(switch_file_handle_t *fh, 
 
   more:
 
-	if (fh->pre_buffer) {
+	if (fh->pre_buffer) {//如果使用pre_buffer，比如语音
 		switch_size_t rlen;
-		int asis = switch_test_flag(fh, SWITCH_FILE_NATIVE);
+		int asis = switch_test_flag(fh, SWITCH_FILE_NATIVE);//是否直接读native文件 asis==>as it is native
 
 		if (!switch_test_flag(fh, SWITCH_FILE_BUFFER_DONE)) {
-			rlen = asis ? fh->pre_buffer_datalen : fh->pre_buffer_datalen / 2 / fh->real_channels;
+			rlen = asis ? fh->pre_buffer_datalen : fh->pre_buffer_datalen / 2 / fh->real_channels;//如果是直接读native，就是直接文件长度，如果不是那采用的是libsndfile，是折算过后的长度
 
 			if (switch_buffer_inuse(fh->pre_buffer) < rlen * 2 * fh->channels) {
 				if ((status = fh->file_interface->file_read(fh, fh->pre_buffer_data, &rlen)) == SWITCH_STATUS_BREAK) {
-					return SWITCH_STATUS_BREAK;
+					return SWITCH_STATUS_BREAK;//要暂停？
 				}
 
 
@@ -478,14 +478,14 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_read(switch_file_handle_t *fh, 
 				} else {
 					fh->samples_in += rlen;
 					if (fh->real_channels != fh->channels && !switch_test_flag(fh, SWITCH_FILE_NOMUX)) {
-						switch_mux_channels((int16_t *) fh->pre_buffer_data, rlen, fh->real_channels, fh->channels);
+						switch_mux_channels((int16_t *) fh->pre_buffer_data, rlen, fh->real_channels, fh->channels);//混合磁盘的语音文件
 					}
-					switch_buffer_write(fh->pre_buffer, fh->pre_buffer_data, asis ? rlen : rlen * 2 * fh->channels);
+					switch_buffer_write(fh->pre_buffer, fh->pre_buffer_data, asis ? rlen : rlen * 2 * fh->channels);//再写到pre_buffer
 				}
 			}
 		}
 
-		rlen = switch_buffer_read(fh->pre_buffer, data, asis ? *len : *len * 2 * fh->channels);
+		rlen = switch_buffer_read(fh->pre_buffer, data, asis ? *len : *len * 2 * fh->channels);//写到data里面
 		*len = asis ? rlen : rlen / 2 / fh->channels;
 
 		if (*len == 0) {
@@ -495,7 +495,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_read(switch_file_handle_t *fh, 
 			status = SWITCH_STATUS_SUCCESS;
 		}
 
-	} else {
+	} else {//一般视频走这里
 
 		if ((status = fh->file_interface->file_read(fh, data, len)) == SWITCH_STATUS_BREAK) {
 			return SWITCH_STATUS_BREAK;
@@ -514,20 +514,20 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_read(switch_file_handle_t *fh, 
 	}
 
 	if (!switch_test_flag(fh, SWITCH_FILE_NATIVE) && fh->native_rate != fh->samplerate) {
-		if (!fh->resampler) {
+		if (!fh->resampler) {//是否要重采样
 			if (switch_resample_create(&fh->resampler,
 									   fh->native_rate, fh->samplerate, (uint32_t) orig_len, SWITCH_RESAMPLE_QUALITY, fh->channels) != SWITCH_STATUS_SUCCESS) {
 				switch_log_printf(SWITCH_CHANNEL_LOG, SWITCH_LOG_CRIT, "Unable to create resampler!\n");
 				return SWITCH_STATUS_GENERR;
 			}
 		}
-
+		//重采样
 		switch_resample_process(fh->resampler, data, (uint32_t) *len);
 
 		if (fh->resampler->to_len < want || fh->resampler->to_len > orig_len) {
 			if (!fh->buffer) {
 				int factor = fh->resampler->to_len * fh->samplerate / 1000;
-				switch_buffer_create_dynamic(&fh->buffer, factor, factor, 0);
+				switch_buffer_create_dynamic(&fh->buffer, factor, factor, 0);//创建buffer
 				switch_assert(fh->buffer);
 			}
 			if (!fh->dbuf || fh->dbuflen < fh->resampler->to_len * 2 * fh->channels) {
@@ -539,13 +539,13 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_read(switch_file_handle_t *fh, 
 			}
 			switch_assert(fh->resampler->to_len * 2 * fh->channels <= fh->dbuflen);
 			memcpy((int16_t *) fh->dbuf, fh->resampler->to, fh->resampler->to_len * 2 * fh->channels);
-			switch_buffer_write(fh->buffer, fh->dbuf, fh->resampler->to_len * 2 * fh->channels);
+			switch_buffer_write(fh->buffer, fh->dbuf, fh->resampler->to_len * 2 * fh->channels);//写到buffer里
 
 			if (switch_buffer_inuse(fh->buffer) < want * 2 * fh->channels) {
 				*len = want;
 				goto more;
 			}
-			*len = switch_buffer_read(fh->buffer, data, orig_len * 2 * fh->channels) / 2 / fh->channels;
+			*len = switch_buffer_read(fh->buffer, data, orig_len * 2 * fh->channels) / 2 / fh->channels;//
 		} else {
 			memcpy(data, fh->resampler->to, fh->resampler->to_len * 2 * fh->channels);
 			*len = fh->resampler->to_len;
@@ -562,9 +562,9 @@ SWITCH_DECLARE(switch_bool_t) switch_core_file_has_video(switch_file_handle_t *f
 	return ((!check_open || switch_test_flag(fh, SWITCH_FILE_OPEN)) && switch_test_flag(fh, SWITCH_FILE_FLAG_VIDEO)) ? SWITCH_TRUE : SWITCH_FALSE;
 }
 
-SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh, void *data, switch_size_t *len)
+SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh, void *data, switch_size_t *len)//tiger 这里用len的指针，是因为重采样，可能变化长度，以便调用者了解
 {
-	switch_size_t orig_len = *len;
+	switch_size_t orig_len = *len;//orig_len 记录原始的长度
 
 	switch_assert(fh != NULL);
 	switch_assert(fh->file_interface != NULL);
@@ -582,11 +582,11 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 	}
 
 
-	if (fh->real_channels != fh->channels && !switch_test_flag(fh, SWITCH_FILE_NOMUX)) {
+	if (fh->real_channels != fh->channels && !switch_test_flag(fh, SWITCH_FILE_NOMUX)) {//如果需要mux，channel数目也不同，则需要重新分配muxbuf
 		int need = *len * 2 * fh->real_channels;
 
 		if (need > fh->muxlen) {
-			fh->muxbuf = realloc(fh->muxbuf, need);
+			fh->muxbuf = realloc(fh->muxbuf, need);//内存重新分配
 			switch_assert(fh->muxbuf);
 			fh->muxlen = need;
 			memcpy(fh->muxbuf, data, fh->muxlen);
@@ -594,12 +594,12 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 
 		}
 
-		switch_mux_channels((int16_t *) data, *len, fh->real_channels, fh->channels);
+		switch_mux_channels((int16_t *) data, *len, fh->real_channels, fh->channels);//混
 	}
 
 
-	if (!switch_test_flag(fh, SWITCH_FILE_NATIVE) && fh->native_rate != fh->samplerate) {
-		if (!fh->resampler) {
+	if (!switch_test_flag(fh, SWITCH_FILE_NATIVE) && fh->native_rate != fh->samplerate) {//如果即不是native，又采样率不一样
+		if (!fh->resampler) {//创建
 			if (switch_resample_create(&fh->resampler,
 									   fh->native_rate,
 									   fh->samplerate,
@@ -608,25 +608,25 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 				return SWITCH_STATUS_GENERR;
 			}
 		}
-
+		//采样
 		switch_resample_process(fh->resampler, data, (uint32_t) * len);
 
-		if (fh->resampler->to_len > orig_len) {
+		if (fh->resampler->to_len > orig_len) {//如果比原来长度长，重新分配内存
 			if (!fh->dbuf || (fh->dbuflen < fh->resampler->to_len * 2 * fh->channels)) {
 				void *mem;
 				fh->dbuflen = fh->resampler->to_len * 2 * fh->channels;
-				mem = realloc(fh->dbuf, fh->dbuflen);
+				mem = realloc(fh->dbuf, fh->dbuflen);//分配内存
 				switch_assert(mem);
 				fh->dbuf = mem;
 			}
 			switch_assert(fh->resampler->to_len * 2 * fh->channels <= fh->dbuflen);
-			memcpy(fh->dbuf, fh->resampler->to, fh->resampler->to_len * 2 * fh->channels);
+			memcpy(fh->dbuf, fh->resampler->to, fh->resampler->to_len * 2 * fh->channels);//复制
 			data = fh->dbuf;
 		} else {
 			memcpy(data, fh->resampler->to, fh->resampler->to_len * 2 * fh->channels);
 		}
 
-		*len = fh->resampler->to_len;
+		*len = fh->resampler->to_len;//新的长度
 	}
 
 	if (!*len) {
@@ -634,22 +634,22 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 	}
 
 
-	if (fh->pre_buffer) {
+	if (fh->pre_buffer) {//音频使用pre_buffer
 		switch_size_t rlen, blen;
 		switch_status_t status = SWITCH_STATUS_SUCCESS;
-		int asis = switch_test_flag(fh, SWITCH_FILE_NATIVE);
+		int asis = switch_test_flag(fh, SWITCH_FILE_NATIVE);//是否直接文件读取 asis ==> as it is native file 
 
 		switch_buffer_write(fh->pre_buffer, data, (asis ? *len : *len * 2) * fh->channels);
 
 		rlen = switch_buffer_inuse(fh->pre_buffer);
 
-		if (rlen >= fh->pre_buffer_datalen) {
-			if ((blen = switch_buffer_read(fh->pre_buffer, fh->pre_buffer_data, fh->pre_buffer_datalen))) {
+		if (rlen >= fh->pre_buffer_datalen) {//pre_buffer_datalen 初始定义为64k
+			if ((blen = switch_buffer_read(fh->pre_buffer, fh->pre_buffer_data, fh->pre_buffer_datalen))) {//blen为读取的长度
 				if (!asis)
-					blen /= 2;
-				if (fh->channels > 1)
+					blen /= 2;//
+				if (fh->channels > 1)//除以通道数，因为调用的libsndfile库，一般参数都含channel
 					blen /= fh->channels;
-				if ((status = fh->file_interface->file_write(fh, fh->pre_buffer_data, &blen)) != SWITCH_STATUS_SUCCESS) {
+				if ((status = fh->file_interface->file_write(fh, fh->pre_buffer_data, &blen)) != SWITCH_STATUS_SUCCESS) {//查看堆栈 采用libsndfile 库来实现文件读写 sndfile_file_write 不是：这两个函数//native_file_file_write 或者//av_file_write
 					*len = 0;
 				}
 			}
@@ -658,7 +658,7 @@ SWITCH_DECLARE(switch_status_t) switch_core_file_write(switch_file_handle_t *fh,
 		return status;
 	} else {
 		switch_status_t status;
-		if ((status = fh->file_interface->file_write(fh, data, len)) == SWITCH_STATUS_SUCCESS) {//采用libsndfile 库来实现文件读写 sndfile_file_write 不是：这两个函数//native_file_file_write 或者//av_file_write
+		if ((status = fh->file_interface->file_write(fh, data, len)) == SWITCH_STATUS_SUCCESS) {
 			fh->samples_out += orig_len;
 		}
 		return status;

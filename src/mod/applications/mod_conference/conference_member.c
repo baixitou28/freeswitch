@@ -1454,7 +1454,7 @@ switch_status_t conference_member_play_file(conference_member_t *member, char *f
  retry:
 
 	/* Open the file */
-	fnode->fh.pre_buffer_datalen = SWITCH_DEFAULT_FILE_BUFFER_LEN;
+	fnode->fh.pre_buffer_datalen = SWITCH_DEFAULT_FILE_BUFFER_LEN;//tiger 默认的64k长度
 	if (switch_core_file_open(&fnode->fh,
 							  file, (uint8_t) channels, member->conference->rate, SWITCH_FILE_FLAG_READ | SWITCH_FILE_DATA_SHORT,
 							  pool) != SWITCH_STATUS_SUCCESS) {

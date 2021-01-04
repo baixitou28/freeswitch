@@ -265,7 +265,7 @@ static switch_status_t sndfile_file_truncate(switch_file_handle_t *handle, int64
 	return SWITCH_STATUS_SUCCESS;
 }
 
-static switch_status_t sndfile_file_close(switch_file_handle_t *handle)
+static switch_status_t sndfile_file_close(switch_file_handle_t *handle)//关闭的时候刷新context吗？
 {
 	sndfile_context *context = handle->private_info;
 
@@ -285,7 +285,7 @@ static switch_status_t sndfile_file_seek(switch_file_handle_t *handle, unsigned 
 		return SWITCH_STATUS_NOTIMPL;
 	}
 
-	if ((count = sf_seek(context->handle, samples, whence)) == ((sf_count_t) -1)) {
+	if ((count = sf_seek(context->handle, samples, whence)) == ((sf_count_t) -1)) {//真实的执行
 		r = SWITCH_STATUS_BREAK;
 		count = sf_seek(context->handle, -1, SEEK_END);
 	}
@@ -306,7 +306,7 @@ static switch_status_t sndfile_file_read(switch_file_handle_t *handle, void *dat
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_INT)) {
 		*len = (size_t) sf_readf_int(context->handle, (int *) data, inlen);
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_SHORT)) {
-		*len = (size_t) sf_readf_short(context->handle, (short *) data, inlen);
+		*len = (size_t) sf_readf_short(context->handle, (short *) data, inlen);//读short类型
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_FLOAT)) {
 		*len = (size_t) sf_readf_float(context->handle, (float *) data, inlen);
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_DOUBLE)) {
@@ -331,7 +331,7 @@ static switch_status_t sndfile_file_write(switch_file_handle_t *handle, void *da
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_INT)) {
 		*len = (size_t) sf_writef_int(context->handle, (int *) data, inlen);
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_SHORT)) {
-		*len = (size_t) sf_writef_short(context->handle, (short *) data, inlen);//tiger record 录制
+		*len = (size_t) sf_writef_short(context->handle, (short *) data, inlen);//tiger record 录制 写16bit
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_FLOAT)) {
 		*len = (size_t) sf_writef_float(context->handle, (float *) data, inlen);
 	} else if (switch_test_flag(handle, SWITCH_FILE_DATA_DOUBLE)) {
@@ -345,7 +345,7 @@ static switch_status_t sndfile_file_write(switch_file_handle_t *handle, void *da
 	return sf_error(context->handle) == SF_ERR_NO_ERROR ? SWITCH_STATUS_SUCCESS : SWITCH_STATUS_FALSE;
 }
 
-static switch_status_t sndfile_file_set_string(switch_file_handle_t *handle, switch_audio_col_t col, const char *string)
+static switch_status_t sndfile_file_set_string(switch_file_handle_t *handle, switch_audio_col_t col, const char *string)//tiger set string 设置元信息
 {
 	sndfile_context *context = handle->private_info;
 
@@ -369,7 +369,7 @@ static switch_status_t sndfile_file_get_string(switch_file_handle_t *handle, swi
 
 static char **supported_formats;
 
-static switch_status_t setup_formats(switch_memory_pool_t *pool)
+static switch_status_t setup_formats(switch_memory_pool_t *pool)//支持的类型
 {
 	SF_FORMAT_INFO info;
 	char buffer[128];
@@ -478,7 +478,7 @@ static switch_status_t setup_formats(switch_memory_pool_t *pool)
 	return SWITCH_STATUS_SUCCESS;
 }
 
-SWITCH_MODULE_LOAD_FUNCTION(mod_sndfile_load)
+SWITCH_MODULE_LOAD_FUNCTION(mod_sndfile_load)//TIGER libsndfile 加载多媒体文件的读写库libsndfile
 {
 	switch_file_interface_t *file_interface;
 

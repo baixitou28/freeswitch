@@ -286,7 +286,7 @@ SWITCH_DECLARE(switch_size_t) switch_buffer_peek_zerocopy(switch_buffer_t *buffe
 	return reading;
 }
 
-SWITCH_DECLARE(switch_size_t) switch_buffer_write(switch_buffer_t *buffer, const void *data, switch_size_t datalen)
+SWITCH_DECLARE(switch_size_t) switch_buffer_write(switch_buffer_t *buffer, const void *data, switch_size_t datalen)//Ω´data–¥µΩbuffer¿Ô
 {
 	switch_size_t freespace, actual_freespace;
 

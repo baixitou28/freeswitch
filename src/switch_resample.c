@@ -271,20 +271,20 @@ SWITCH_DECLARE(uint32_t) switch_unmerge_sln(int16_t *data, uint32_t samples, int
 	return x;
 }
 
-SWITCH_DECLARE(void) switch_mux_channels(int16_t *data, switch_size_t samples, uint32_t orig_channels, uint32_t channels)
+SWITCH_DECLARE(void) switch_mux_channels(int16_t *data, switch_size_t samples, uint32_t orig_channels, uint32_t channels)//tiger mux 入口
 {
 	switch_size_t i = 0;
 	uint32_t j = 0;
 
 	switch_assert(channels < 11);
 
-	if (orig_channels > channels) {
+	if (orig_channels > channels) {//原始的channel比现在的多，合并一些channel
 		for (i = 0; i < samples; i++) {
 			int32_t z = 0;
 			for (j = 0; j < orig_channels; j++) {
 				z += data[i * orig_channels + j];
-				switch_normalize_to_16bit(z);
-				data[i] = (int16_t) z;
+				switch_normalize_to_16bit(z);//限制最大值
+				data[i] = (int16_t) z;//所有的channel都加到第一个
 			}
 		}
 	} else if (orig_channels < channels) {
@@ -295,10 +295,10 @@ SWITCH_DECLARE(void) switch_mux_channels(int16_t *data, switch_size_t samples, u
 		uint32_t k = 0, len = samples * orig_channels;
 
 		for (i = 0; i < len; i++) {
-			data[i+len] = data[i];
+			data[i+len] = data[i];//
 		}
 
-		for (i = 0; i < samples; i++) {
+		for (i = 0; i < samples; i++) {//TIGER 不是很理解
 			for (j = 0; j < channels; j++) {
 				data[k++] = data[i + samples];
 			}
