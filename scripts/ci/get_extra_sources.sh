@@ -11,7 +11,7 @@ fi
 (mkdir -p rpmbuild && cd rpmbuild && mkdir -p SOURCES BUILD BUILDROOT i386 x86_64 SOURCES SPECS)
 
 cd $src_repo/rpmbuild/SOURCES
-
+#tiger shell get_extra_sources.sh取freeswitch.spec的不包含Source0的Source文件
 for i in `grep 'Source..\?:' $src_repo/freeswitch.spec|grep -v Source0 |awk '{print $2}'`; do wget $i; done
 
 cat 1>&2 <<EOF

@@ -22,7 +22,7 @@ if [ $# -gt 1 ]; then
 fi
 
 (mkdir -p rpmbuild && cd rpmbuild && mkdir -p SOURCES BUILD BUILDROOT i386 x86_64 SPECS)
-
+#tiger 取src_dist rpm 编译文件spec，和freeswitch*.tar.bz2等 # v8-3.24.14.tar.bz2等fs依赖文件在前面的get_extra_sources.sh已经下载在这个目录里了
 cd $src_repo
 cp -a src_dist/*.spec rpmbuild/SPECS/ || true
 cp -a src_dist/* rpmbuild/SOURCES/ || true
@@ -39,9 +39,9 @@ mkdir -p $src_repo/RPMS
 mv $src_repo/rpmbuild/*/*.rpm $src_repo/RPMS/.
 
 cat 1>&2 <<EOF
-----------------------------------------------------------------------
-The v$cver-$build RPMs have been rolled, now we
-just need to push them to the YUM Repo
+----------------------------------------------------------------------//tiger 前面脚本get_extra_sources.sh 取freeswitch spec的Source0文件
+The v$cver-$build RPMs have been rolled, now we //tiger BUILD shell 这里复制了src_dist/* rpmbuild/SOURCES/(包含了 v8-3.24.14.tar.bz2等) 参考下载目录 /root/freeswitch_1.8.2_build/freeswitch.1.8.2/rpmbuild/BUILD/freeswitch-1.8.2/rpmbuild/SOURCES
+just need to push them to the YUM Repo //TIGER  创建 用自定义的目录 来rpmbuild编译 --define "_rpmdir %{_topdir}" 
 ----------------------------------------------------------------------
 EOF
 
